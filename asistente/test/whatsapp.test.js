@@ -109,7 +109,7 @@ test("incidencia: avisa al dueño, contesta al cliente y se pone en pausa", asyn
   const claude = claudeFalso([
     { stop_reason: "tool_use", content: [
       { type: "thinking", thinking: "" },
-      { type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "incidencia", resumen: "Se ha quedado con 6 € a las 18:30", maquina: "3" } },
+      { type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "incidencia", resumen: "Se ha quedado con 6 € (monedas) a las 18:30", maquina: "3", bizum: "612345678" } },
     ] },
     texto("Ya he avisado al equipo. Una persona te escribirá por aquí en cuanto pueda 🙏"),
   ]);
@@ -122,6 +122,7 @@ test("incidencia: avisa al dueño, contesta al cliente y se pone en pausa", asyn
   assert.match(aviso.texto, /Ana/);
   assert.match(aviso.texto, /Máquina: 3/);
   assert.match(aviso.texto, /#34612345678 tu mensaje/);
+  assert.match(aviso.texto, /Bizum: 612345678/);
   assert.ok(wa.enviados.find((e) => e.para === CLIENTE && /avisado al equipo/.test(e.texto)));
   // segunda llamada a Claude: lleva la respuesta de la herramienta
   const ultimo = claude.peticiones[1].messages.at(-1);
