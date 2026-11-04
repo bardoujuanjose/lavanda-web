@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estadoConexion, conectarApp } from "../src/conexion.js";
+import { estadoConexion, conectarApp, activarMensajes } from "../src/conexion.js";
 
 const ENV = { WHATSAPP_TOKEN: "tok", WHATSAPP_PHONE_ID: "PH1", WHATSAPP_APP_SECRET: "s", WHATSAPP_VERIFY_TOKEN: "v", OWNER_PHONE: "600" };
 
@@ -50,4 +50,24 @@ test("si el token no indica la cuenta, se puede indicar a mano", async () => {
   assert.equal(e2.waba, "W2");
   const e3 = await conectarApp(ENV, sinCuentas, "W2");
   assert.equal(e3.miAppConectada, true);
+});
+
+test("activa el campo messages del webhook con el token de la app", async () => {
+  const m = metaFalso();
+  let suscripcion = { object: "whatsapp_business_account", callback_url: "https://x/whatsapp", active: true, fields: [] };
+  let peticion;
+  const f = async (url, op = {}) => {
+    if (url.includes("/MIA/subscriptions")) {
+      assert.equal(op.headers.Authorization, "Bearer MIA|s");
+      if (op.method === "POST") { peticion = Object.fromEntries(op.body); suscripcion.fields = [{ name: "messages", version: "v23.0" }]; return new Response('{"success":true}', { status: 200 }); }
+      return new Response(JSON.stringify({ data: [suscripcion] }), { status: 200 });
+    }
+    return m.f(url, op);
+  };
+  const antes = await estadoConexion(ENV, f, "W2");
+  assert.deepEqual(antes.webhook.campos, []);
+  const w = await activarMensajes(ENV, "https://x/whatsapp", f);
+  assert.equal(peticion.fields, "messages");
+  assert.equal(peticion.verify_token, "v");
+  assert.deepEqual(w.campos, ["messages"]);
 });

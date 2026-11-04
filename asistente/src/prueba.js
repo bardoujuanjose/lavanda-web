@@ -8,7 +8,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { procesarPendientes, aplicarResultado, RESPUESTA_ERROR } from "./asistente-whatsapp.js";
 import { normalizarTelefono } from "./whatsapp.js";
-import { estadoConexion, conectarApp } from "./conexion.js";
+import { estadoConexion, conectarApp, activarMensajes } from "./conexion.js";
 
 const CLIENTE = "34600000001";
 const MAX_FOTO_BASE64 = 6_000_000;
@@ -63,12 +63,22 @@ export async function atenderPrueba(request, env) {
   if (pathname === "/prueba" && request.method === "GET") {
     return new Response(PAGINA, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
   }
-  const rutas = ["/prueba/mensaje", "/prueba/whatsapp-estado", "/prueba/whatsapp-conectar"];
+  const rutas = ["/prueba/mensaje", "/prueba/whatsapp-estado", "/prueba/whatsapp-conectar", "/prueba/whatsapp-mensajes"];
   if (!rutas.includes(pathname) || request.method !== "POST") return json({ error: "No encontrado" }, 404);
 
   if (!env.PRUEBA_CLAVE) return json({ error: "Falta configurar el secreto PRUEBA_CLAVE en Cloudflare." }, 503);
   if (!claveCorrecta(env, request.headers.get("X-Clave"))) return json({ error: "Contraseña incorrecta." }, 401);
 
+  if (pathname === "/prueba/whatsapp-mensajes") {
+    const datos = await request.json().catch(() => ({}));
+    const waba = /^\d{6,25}$/.test(String(datos.waba || "")) ? String(datos.waba) : undefined;
+    try {
+      await activarMensajes(env, new URL("/whatsapp", request.url).toString());
+      return json(await estadoConexion(env, fetch, waba));
+    } catch (e) {
+      return json({ ...(await estadoConexion(env, fetch, waba)), error: "No se pudo activar: " + e.message }, 502);
+    }
+  }
   if (pathname === "/prueba/whatsapp-estado" || pathname === "/prueba/whatsapp-conectar") {
     const datos = await request.json().catch(() => ({}));
     const waba = /^\d{6,25}$/.test(String(datos.waba || "")) ? String(datos.waba) : undefined;
@@ -200,6 +210,7 @@ const PAGINA = `<!doctype html>
     </div>
     <div class="botones">
       <button id="waConectar" type="button" hidden>Conectar mi app a WhatsApp</button>
+      <button id="waMensajes" type="button" hidden>Activar recepción de mensajes</button>
       <button id="waCerrar" type="button">Cerrar</button>
     </div>
   </div>
@@ -258,11 +269,19 @@ const PAGINA = `<!doctype html>
       h += "<div style='margin-top:6px'>Apps que reciben los mensajes de este WhatsApp:</div><ul style='margin:4px 0 0 18px;padding:0'>" +
         (d.apps.length ? d.apps.map(function (a) { return "<li>" + esc(a.nombre) + (a.id === d.appId ? " <b>(tu app)</b>" : "") + "</li>"; }).join("") : "<li>ninguna</li>") + "</ul>";
       h += linea(d.miAppConectada, d.miAppConectada ? "Tu app recibe los mensajes." : "Tu app todavía NO recibe los mensajes.");
+      if (d.webhook) {
+        if (d.webhook.error) h += linea(false, "No se pudo leer el webhook: " + esc(d.webhook.error));
+        else {
+          var tiene = d.webhook.campos.indexOf("messages") >= 0;
+          h += linea(tiene, tiene ? "Recepción de mensajes activada (" + esc(d.webhook.url) + ")" : "Recepción de mensajes SIN activar");
+        }
+      }
       if (d.apps.some(function (a) { return a.id !== d.appId; })) h += "<div style='margin-top:6px;color:#7a5d00'>⚠️ Hay otra app conectada (probablemente Botpress). Si sigue activa, los clientes podrían recibir dos respuestas.</div>";
     }
     if (d.error) h += linea(false, esc(d.error));
     waInfo.innerHTML = h || "Sin datos.";
     waConectar.hidden = !(d.waba && !d.miAppConectada);
+    document.getElementById("waMensajes").hidden = !(d.webhook && !d.webhook.error && d.webhook.campos.indexOf("messages") < 0);
     if (d.waba) wabaElegida = d.waba;
     document.getElementById("waManual").hidden = !d.pedirWaba;
   }
@@ -276,6 +295,7 @@ const PAGINA = `<!doctype html>
   document.getElementById("conexion").onclick = function () { panelWa.hidden = false; llamarWa("/prueba/whatsapp-estado"); };
   document.getElementById("waCerrar").onclick = function () { panelWa.hidden = true; };
   waConectar.onclick = function () { waConectar.hidden = true; llamarWa("/prueba/whatsapp-conectar"); };
+  document.getElementById("waMensajes").onclick = function () { this.hidden = true; llamarWa("/prueba/whatsapp-mensajes"); };
   document.getElementById("waProbar").onclick = function () { wabaElegida = document.getElementById("wabaId").value.trim(); llamarWa("/prueba/whatsapp-estado"); };
   document.getElementById("fin").onclick = function () { pausa = false; verPausa(); añadir("info", "✅ El asistente vuelve a atender (como escribir #teléfono fin)."); };
 

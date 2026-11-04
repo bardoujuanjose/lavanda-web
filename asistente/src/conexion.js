@@ -7,10 +7,10 @@ function base(env) {
   return `${env.GRAPH_BASE || "https://graph.facebook.com"}/${env.GRAPH_VERSION || "v23.0"}`;
 }
 
-async function graph(env, ruta, opciones = {}, fetchImpl = fetch) {
+async function graph(env, ruta, opciones = {}, fetchImpl = fetch, token = env.WHATSAPP_TOKEN) {
   const r = await fetchImpl(`${base(env)}/${ruta}`, {
     ...opciones,
-    headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, ...(opciones.headers || {}) },
+    headers: { Authorization: `Bearer ${token}`, ...(opciones.headers || {}) },
   });
   const datos = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(datos?.error?.message || `Meta respondió ${r.status}`);
@@ -69,6 +69,13 @@ export async function estadoConexion(env, fetchImpl = fetch, wabaManual) {
         nombre: a.whatsapp_business_api_data?.name || a.name || "(sin nombre)",
       }));
       res.miAppConectada = Boolean(c.appId && res.apps.some((a) => a.id === c.appId));
+      if (c.appId && env.WHATSAPP_APP_SECRET) {
+        try {
+          res.webhook = await estadoWebhook(env, c.appId, fetchImpl);
+        } catch (e) {
+          res.webhook = { error: e.message };
+        }
+      }
     } else {
       res.error = "No encuentro la cuenta de WhatsApp de este número." + (c.errores.length ? " Detalle: " + c.errores.join(" · ") : " El token no indica ninguna cuenta.");
       res.pedirWaba = true;
@@ -77,6 +84,34 @@ export async function estadoConexion(env, fetchImpl = fetch, wabaManual) {
     res.error = "No se pudo comprobar la cuenta de WhatsApp: " + e.message;
   }
   return res;
+}
+
+// Webhook de la app: a qué dirección y qué campos ("messages") envía Meta
+const tokenApp = (env, appId) => `${appId}|${env.WHATSAPP_APP_SECRET}`;
+
+async function estadoWebhook(env, appId, fetchImpl) {
+  const subs = await graph(env, `${appId}/subscriptions`, {}, fetchImpl, tokenApp(env, appId));
+  const wa = (subs.data || []).find((s) => s.object === "whatsapp_business_account");
+  return {
+    url: wa?.callback_url || null,
+    activo: Boolean(wa?.active),
+    campos: (wa?.fields || []).map((f) => (typeof f === "string" ? f : f.name)),
+  };
+}
+
+export async function activarMensajes(env, urlServidor, fetchImpl = fetch) {
+  const { appId } = await cuentasDelToken(env, fetchImpl);
+  if (!appId) throw new Error("No se pudo saber el identificador de la app.");
+  if (!env.WHATSAPP_APP_SECRET || !env.WHATSAPP_VERIFY_TOKEN) throw new Error("Faltan WHATSAPP_APP_SECRET o WHATSAPP_VERIFY_TOKEN en Cloudflare.");
+  const cuerpo = new URLSearchParams({
+    object: "whatsapp_business_account",
+    callback_url: urlServidor,
+    verify_token: env.WHATSAPP_VERIFY_TOKEN,
+    fields: "messages",
+    include_values: "true",
+  });
+  await graph(env, `${appId}/subscriptions`, { method: "POST", body: cuerpo }, fetchImpl, tokenApp(env, appId));
+  return estadoWebhook(env, appId, fetchImpl);
 }
 
 export async function conectarApp(env, fetchImpl = fetch, wabaManual) {
