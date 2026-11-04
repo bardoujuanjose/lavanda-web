@@ -80,7 +80,7 @@ export function resumirPendientes(pendientes) {
 // ---------------------------------------------------------------------
 //  Avisar al dueño por WhatsApp
 // ---------------------------------------------------------------------
-export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina }) {
+export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, bizum }) {
   const dueno = normalizarTelefono(env.OWNER_PHONE);
   if (!dueno) throw new Error("Falta OWNER_PHONE");
   const titulos = { incidencia: "🔔 *Incidencia*", hablar_con_persona: "🙋 *Quiere hablar con una persona*", otro: "📌 *Aviso*" };
@@ -89,6 +89,7 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
     `👤 ${nombre || "Cliente"} · ${bonito(telefono)}`,
     maquina ? `🧺 Máquina: ${maquina}` : null,
     `📝 ${resumen}`,
+    bizum ? `💸 Bizum: ${bizum}` : null,
     "",
     "Para contestarle escribe:",
     `#${telefono} tu mensaje`,
@@ -100,7 +101,7 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
   } catch (e) {
     if (e.code !== ERROR_FUERA_DE_24H) throw e;
     // Han pasado más de 24 h desde tu último mensaje al número del negocio: Meta exige una plantilla aprobada
-    const linea = `${(titulos[motivo] || titulos.otro).replace(/[*]/g, "")} - ${nombre || "Cliente"} (${bonito(telefono)})${maquina ? " - máquina " + maquina : ""}: ${resumen}`
+    const linea = `${(titulos[motivo] || titulos.otro).replace(/[*]/g, "")} - ${nombre || "Cliente"} (${bonito(telefono)})${maquina ? " - máquina " + maquina : ""}: ${resumen}${bizum ? " - Bizum " + bizum : ""}`
       .replace(/\s+/g, " ").slice(0, 900);
     await wa.enviarPlantilla(dueno, env.OWNER_TEMPLATE || "aviso_lavanda", env.OWNER_TEMPLATE_LANG || "es", [linea]);
   }
@@ -211,7 +212,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
       } else {
         try {
           const datos = typeof uso.input === "string" ? JSON.parse(uso.input) : uso.input;
-          await avisarDueno({ env, wa, telefono, nombre, motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina });
+          await avisarDueno({ env, wa, telefono, nombre, motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, bizum: datos.bizum });
           resultado.pausa = { desde: ahora, ultimoDueno: null, motivo: datos.motivo };
           contenido = "Aviso enviado al equipo. Despídete diciendo que una persona del equipo le escribirá por este mismo chat en cuanto pueda.";
         } catch (e) {

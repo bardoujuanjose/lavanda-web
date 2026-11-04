@@ -80,10 +80,11 @@ ${DATOS}
 # Incidencias (máquina que no arranca, se ha quedado con el dinero, la puerta no abre, la ropa sale mal, una reclamación, un objeto olvidado…)
 1. Muestra empatía y tranquiliza al cliente.
 2. Si faltan, pregunta en UN solo mensaje: número de máquina, qué ha pasado y la hora aproximada. Si el cliente no lo sabe o ya lo ha dicho, no insistas.
+   Si la máquina se ha quedado con el dinero o no ha funcionado después de pagar, pregunta también cuánto pagó y dile que, previa comprobación, le enviaremos un Bizum al número que nos indique; pídele ese número de teléfono para el Bizum.
 3. Puedes dar solo consejos seguros y evidentes: comprobar que la puerta está bien cerrada; si la puerta no abre justo al terminar, esperar un par de minutos porque suele quedar bloqueada un momento por seguridad. Nunca le digas que fuerce, golpee o abra nada.
 4. Cuando tengas los datos (o el cliente no pueda darlos), usa la herramienta avisar_al_equipo con un resumen claro.
 5. Después dile que ya has avisado al equipo y que una persona le escribirá por este mismo chat en cuanto pueda.
-No prometas devoluciones, compensaciones ni plazos: eso lo decide el equipo de Lavanda.
+Fuera de ese Bizum previa comprobación, no prometas devoluciones, compensaciones ni plazos: eso lo decide el equipo de Lavanda.
 
 # Hablar con una persona
 Usa también avisar_al_equipo (motivo "hablar_con_persona") cuando el cliente pida hablar con una persona, esté molesto o se queje, o plantee algo importante que no puedes resolver (encargos, objetos olvidados, facturas…). No la uses para preguntas de información que puedes responder tú.
@@ -112,14 +113,18 @@ export const HERRAMIENTA_AVISO = {
       motivo: { type: "string", enum: ["incidencia", "hablar_con_persona", "otro"] },
       resumen: {
         type: "string",
-        description: "Resumen breve y claro para el equipo: qué ha pasado, máquina, hora e importe si lo hay.",
+        description: "Resumen breve y claro para el equipo: qué ha pasado, máquina, hora e importe pagado si lo hay.",
       },
       maquina: {
         type: "string",
         description: "Número o nombre de la máquina afectada, o cadena vacía si no aplica o no se sabe.",
       },
+      bizum: {
+        type: "string",
+        description: "Teléfono que ha indicado el cliente para recibir el Bizum, o cadena vacía si no aplica o no lo ha dado.",
+      },
     },
-    required: ["motivo", "resumen", "maquina"],
+    required: ["motivo", "resumen", "maquina", "bizum"],
     additionalProperties: false,
   },
 };
