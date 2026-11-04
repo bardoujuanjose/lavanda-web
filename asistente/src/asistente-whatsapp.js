@@ -80,7 +80,7 @@ export function resumirPendientes(pendientes) {
 // ---------------------------------------------------------------------
 //  Avisar al dueño por WhatsApp
 // ---------------------------------------------------------------------
-export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, bizum }) {
+export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, importe, bizum }) {
   const dueno = normalizarTelefono(env.OWNER_PHONE);
   if (!dueno) throw new Error("Falta OWNER_PHONE");
   const titulos = { incidencia: "🔔 *Incidencia*", hablar_con_persona: "🙋 *Quiere hablar con una persona*", otro: "📌 *Aviso*" };
@@ -89,6 +89,7 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
     `👤 ${nombre || "Cliente"} · ${bonito(telefono)}`,
     maquina ? `🧺 Máquina: ${maquina}` : null,
     `📝 ${resumen}`,
+    importe ? `💶 Le corresponden: ${importe}` : null,
     bizum ? `💸 Bizum: ${bizum}` : null,
     "",
     "Para contestarle escribe:",
@@ -101,7 +102,7 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
   } catch (e) {
     if (e.code !== ERROR_FUERA_DE_24H) throw e;
     // Han pasado más de 24 h desde tu último mensaje al número del negocio: Meta exige una plantilla aprobada
-    const linea = `${(titulos[motivo] || titulos.otro).replace(/[*]/g, "")} - ${nombre || "Cliente"} (${bonito(telefono)})${maquina ? " - máquina " + maquina : ""}: ${resumen}${bizum ? " - Bizum " + bizum : ""}`
+    const linea = `${(titulos[motivo] || titulos.otro).replace(/[*]/g, "")} - ${nombre || "Cliente"} (${bonito(telefono)})${maquina ? " - máquina " + maquina : ""}: ${resumen}${importe ? " - le corresponden " + importe : ""}${bizum ? " - Bizum " + bizum : ""}`
       .replace(/\s+/g, " ").slice(0, 900);
     await wa.enviarPlantilla(dueno, env.OWNER_TEMPLATE || "aviso_lavanda", env.OWNER_TEMPLATE_LANG || "es", [linea]);
   }
@@ -212,9 +213,14 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
       } else {
         try {
           const datos = typeof uso.input === "string" ? JSON.parse(uso.input) : uso.input;
-          await avisarDueno({ env, wa, telefono, nombre, motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, bizum: datos.bizum });
-          resultado.pausa = { desde: ahora, ultimoDueno: null, motivo: datos.motivo };
-          contenido = "Aviso enviado al equipo. Despídete diciendo que una persona del equipo le escribirá por este mismo chat en cuanto pueda.";
+          await avisarDueno({ env, wa, telefono, nombre, motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, importe: datos.importe, bizum: datos.bizum });
+          if (datos.motivo === "hablar_con_persona") {
+            // Solo cuando el cliente quiere hablar con una persona, el asistente se calla y atiende el dueño
+            resultado.pausa = { desde: ahora, ultimoDueno: null, motivo: datos.motivo };
+            contenido = "Aviso enviado al equipo. Dile que una persona del equipo le escribirá por este mismo chat en cuanto pueda.";
+          } else {
+            contenido = "Aviso enviado al equipo. Responde al cliente según tus instrucciones para esta incidencia; no digas que una persona le escribirá.";
+          }
         } catch (e) {
           console.error("No se pudo avisar al dueño:", e.message);
           contenido = "No se ha podido avisar al equipo. Discúlpate y pide al cliente que llame al 689 81 02 13.";

@@ -104,14 +104,14 @@ test("junta varios mensajes seguidos en una sola respuesta", async () => {
   assert.equal(wa.enviados.length, 1);
 });
 
-test("incidencia: avisa al dueño, contesta al cliente y se pone en pausa", async () => {
+test("incidencia de dinero: avisa al dueño con el importe y el asistente sigue atendiendo", async () => {
   const wa = waFalso();
   const claude = claudeFalso([
     { stop_reason: "tool_use", content: [
       { type: "thinking", thinking: "" },
-      { type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "incidencia", resumen: "Se ha quedado con 6 € a las 18:30", maquina: "3", bizum: "612345678" } },
+      { type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "incidencia", resumen: "No le devolvió el cambio: metió 20 € en una lavadora M", maquina: "3", importe: "14 €", bizum: "612345678" } },
     ] },
-    texto("Ya he avisado al equipo. Una persona te escribirá por aquí en cuanto pueda 🙏"),
+    texto("Te corresponden 14 €. En un plazo de 48 horas lo comprobaremos y, si es correcto, te enviaremos el Bizum."),
   ]);
   const r = await procesarPendientes({
     estado: estadoInicial(), pendientes: [{ id: "1", tipo: "text", texto: "la 3 se ha quedado con el dinero a las 18:30" }],
@@ -123,12 +123,14 @@ test("incidencia: avisa al dueño, contesta al cliente y se pone en pausa", asyn
   assert.match(aviso.texto, /Máquina: 3/);
   assert.match(aviso.texto, /#34612345678 tu mensaje/);
   assert.match(aviso.texto, /Bizum: 612345678/);
-  assert.ok(wa.enviados.find((e) => e.para === CLIENTE && /avisado al equipo/.test(e.texto)));
+  assert.match(aviso.texto, /Le corresponden: 14 €/);
+  assert.ok(wa.enviados.find((e) => e.para === CLIENTE && /14 €/.test(e.texto)));
   // segunda llamada a Claude: lleva la respuesta de la herramienta
   const ultimo = claude.peticiones[1].messages.at(-1);
   assert.equal(ultimo.content[0].type, "tool_result");
   assert.equal(ultimo.content[0].tool_use_id, "t1");
-  assert.deepEqual(r.pausa, { desde: 1000, ultimoDueno: null, motivo: "incidencia" });
+  assert.equal(r.pausa, undefined); // no se queda callado
+  assert.doesNotMatch(ultimo.content[0].content, /una persona le escribirá por este/);
 });
 
 test("si pasaron más de 24 h, el aviso al dueño va por plantilla", async () => {
@@ -143,6 +145,16 @@ test("si pasaron más de 24 h, el aviso al dueño va por plantilla", async () =>
   assert.equal(p.idioma, "es");
   assert.doesNotMatch(p.params[0], /\n/);
   assert.match(p.params[0], /Quiere hablar con alguien/);
+});
+
+test("si pide hablar con una persona, el asistente se queda en pausa", async () => {
+  const wa = waFalso();
+  const claude = claudeFalso([
+    { stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "hablar_con_persona", resumen: "Quiere hablar con alguien", maquina: "", importe: "", bizum: "" } }] },
+    texto("Una persona del equipo te escribirá por aquí en cuanto pueda."),
+  ]);
+  const r = await procesarPendientes({ estado: estadoInicial(), pendientes: [{ id: "1", tipo: "text", texto: "quiero hablar con una persona" }], telefono: CLIENTE, nombre: "Ana", wa, claude, env: ENV, ahora: 1000 });
+  assert.deepEqual(r.pausa, { desde: 1000, ultimoDueno: null, motivo: "hablar_con_persona" });
 });
 
 test("si no se puede avisar al dueño, no se pone en pausa", async () => {
