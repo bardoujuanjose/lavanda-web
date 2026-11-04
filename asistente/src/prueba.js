@@ -313,6 +313,24 @@ const PAGINA = `<!doctype html>
             "<br>Llamadas entrantes van a: " + esc(n.voz) + (n.metodoVoz ? " (" + esc(n.metodoVoz) + ")" : "") + "</div>";
         });
         if (d.ok && !(d.numeros || []).length) h += linea(false, "No hay números en esta cuenta de Twilio.");
+        if (d.tipoCuenta) h += "<div style='margin-top:8px'>Tipo de cuenta: <b>" + (d.tipoCuenta === "Trial" ? "de prueba (Trial)" : esc(d.tipoCuenta === "Full" ? "normal (Full)" : d.tipoCuenta)) + "</b></div>";
+        function tabla(t, p) {
+          if (!p) return "";
+          return "<div style='margin-top:10px'><b>" + t + "</b> (" + esc(p.moneda) + ")<ul style='margin:4px 0 0 18px;padding:0'>" +
+            p.lista.map(function (x) { return "<li>" + esc(x.tipo) + ": " + esc(x.precio) + "</li>"; }).join("") + "</ul></div>";
+        }
+        h += tabla("Número español, precio al mes", d.preciosNumero);
+        h += tabla("Llamada recibida, precio por minuto", d.preciosLlamada);
+        if (d.errorPreciosNumero) h += linea(false, "Precios de números: " + esc(d.errorPreciosNumero));
+        if (d.errorPreciosLlamada) h += linea(false, "Precios de llamadas: " + esc(d.errorPreciosLlamada));
+        if (d.requisitos && d.requisitos.length) {
+          h += "<div style='margin-top:10px'><b>Requisitos para un número español de empresa</b>";
+          d.requisitos.forEach(function (r) {
+            h += "<div style='margin-top:6px;font-size:.88rem'><u>" + esc(r.tipo) + "</u>" + (r.error ? ": " + esc(r.error) :
+              ": " + esc(r.nombre) + "<br>Datos: " + esc((r.datos || []).join(", ")) + "<br>Documentos: " + esc((r.documentos || []).join("; "))) + "</div>";
+          });
+          h += "</div>";
+        }
         waInfo.innerHTML = h || "Sin datos.";
       })
       .catch(function () { waInfo.textContent = "No se ha podido conectar con el servidor."; });
