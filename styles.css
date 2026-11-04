@@ -221,9 +221,11 @@ a:focus-visible { outline: 3px solid var(--verde); outline-offset: 3px; }
   border: 2px dashed #d7bfe7;
 }
 .included p { margin: 0; }
-.included-icon { flex-shrink: 0; width: 92px; height: auto; overflow: visible; }
+.included-icon { flex-shrink: 0; width: 126px; height: auto; overflow: visible; }
 .included-icon .bottle { transform-box: fill-box; transform-origin: 50% 100%; animation: wobble 3s ease-in-out infinite; }
 .included-icon .b-suav { animation-delay: -1.5s; }
+.included-icon .b-des { animation-delay: -0.7s; }
+.included-icon .ib.ib5 { fill: #8dc63f; stroke: none; animation-delay: -1.6s; }
 .included-icon .ib { fill: #fff; stroke: #d7bfe7; stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: bubble 3.5s ease-in-out infinite; }
 .included-icon .ib2 { animation-delay: -1s; } .included-icon .ib3 { animation-delay: -2s; } .included-icon .ib4 { animation-delay: -2.7s; }
 @keyframes wobble { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
