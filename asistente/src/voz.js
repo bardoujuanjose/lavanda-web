@@ -231,6 +231,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
       if (control.cortada) return;
       actual = null;
       enviar({ type: "text", token: "", last: true });
+      if (control.dicho) console.log(`Voz [asistente]: ${control.dicho}`);
 
       if (msg.stop_reason === "refusal") {
         historial.push({ role: "assistant", content: "Perdona, con eso no puedo ayudarte." });
@@ -244,6 +245,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
       const resultados = [];
       for (const uso of usos) {
         const datos = typeof uso.input === "string" ? JSON.parse(uso.input) : uso.input;
+        console.log(`Voz [herramienta ${uso.name}]: ${JSON.stringify(datos)}`);
         if (uso.name === HERRAMIENTA_PASAR_LLAMADA.name) {
           terminada = true;
           enviar({ type: "end", handoffData: JSON.stringify({ accion: "pasar", resumen: String(datos.resumen || "").slice(0, 300) }) });
@@ -300,6 +302,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
         return;
       }
       if (m.type !== "prompt" || !m.voicePrompt || m.last === false) return;
+      console.log(`Voz [cliente]: ${m.voicePrompt}`);
 
       if (actual && !actual.cortada) { actual.cortada = true; actual.stream?.abort?.(); }
       // La conversación debe alternar cliente/asistente: juntar si hay dos del cliente seguidos
