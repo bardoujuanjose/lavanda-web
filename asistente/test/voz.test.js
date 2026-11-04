@@ -215,3 +215,11 @@ test("se puede probar cualquier voz de ElevenLabs por su ID", async () => {
   const malo = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA4", From: "client:prueba-lavanda", VozPrueba: "ElevenLabs|<script>" }), ENV)).text();
   assert.match(malo, /ttsProvider="Amazon"/);
 });
+
+test("en las pruebas se puede ajustar la velocidad de la voz de ElevenLabs", async () => {
+  const env = { ...ENV, VOZ_TTS_PROVIDER: "ElevenLabs", VOZ_VOZ: "2BJPFS2QZRUEpfkbclGy" };
+  const t = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CB1", From: "client:prueba-lavanda", VelocidadPrueba: "0.9" }), env)).text();
+  assert.match(t, /voice="2BJPFS2QZRUEpfkbclGy-flash_v2_5-0.9_0.5_0.75"/);
+  const t2 = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CB2", From: "client:prueba-lavanda", VelocidadPrueba: "3" }), env)).text();
+  assert.match(t2, /voice="2BJPFS2QZRUEpfkbclGy"/);
+});

@@ -139,6 +139,12 @@ export async function atenderVoz(request, env, ctx) {
       if (voz) atributos.voice = voz; else delete atributos.voice;
       console.log(`Voz [prueba]: probando la voz ${p.VozPrueba}`);
     }
+    // Velocidad de ElevenLabs (prueba): "voz-modelo-velocidad_estabilidad_similitud"
+    if (String(p.From || "").startsWith("client:") && ["0.8", "0.85", "0.9", "0.95", "1.0"].includes(p.VelocidadPrueba)
+        && atributos.ttsProvider === "ElevenLabs" && atributos.voice && !atributos.voice.includes("-")) {
+      atributos.voice = `${atributos.voice}-flash_v2_5-${p.VelocidadPrueba}_0.5_0.75`;
+      console.log(`Voz [prueba]: velocidad ${p.VelocidadPrueba} → ${atributos.voice}`);
+    }
     if (env.VOZ_STT_PROVIDER) atributos.transcriptionProvider = env.VOZ_STT_PROVIDER;
     const attr = Object.entries(atributos).map(([k, v]) => `${k}="${xml(v)}"`).join(" ");
     return twiml(`<Connect action="${xml(fin.toString())}"><ConversationRelay ${attr}/></Connect>`);

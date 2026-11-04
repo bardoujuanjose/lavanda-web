@@ -235,6 +235,15 @@ const PAGINA = `<!doctype html>
       <option value="ElevenLabs|">ElevenLabs · voz por defecto</option>
     </select>
     <input id="vozEleven" placeholder="…o pega un Voice ID de ElevenLabs" style="width:100%;padding:9px;margin:-4px 0 12px;border:1px solid #ccd;border-radius:8px;font-size:1rem">
+    <label for="velPrueba" style="font-size:.9rem">Velocidad (solo voces de ElevenLabs):</label>
+    <select id="velPrueba" style="width:100%;padding:9px;margin:6px 0 12px;border:1px solid #ccd;border-radius:8px;font-size:1rem">
+      <option value="">Normal (sin ajustar)</option>
+      <option value="1.0">1.0 (normal, indicada)</option>
+      <option value="0.95">0.95 (un poco más lenta)</option>
+      <option value="0.9">0.9 (más lenta)</option>
+      <option value="0.85">0.85 (bastante más lenta)</option>
+      <option value="0.8">0.8 (lenta)</option>
+    </select>
     <button id="empezarLlamada" type="button" style="background:#075e54;color:#fff;border:0;border-radius:24px;padding:12px 26px;font:inherit;font-weight:700;cursor:pointer;margin-bottom:10px">Llamar</button>
     <p style="font-size:.85rem;color:#667781;margin:0 0 12px">Habla con el micrófono del ordenador como si fueras un cliente. Cuesta unos céntimos por minuto. Los avisos de Bizum sí te llegarán al móvil.</p>
     <button id="colgar" type="button" style="background:#d32f2f;color:#fff;border:0;border-radius:24px;padding:12px 26px;font:inherit;font-weight:700;cursor:pointer">Colgar</button>
@@ -371,6 +380,8 @@ const PAGINA = `<!doctype html>
           var params = {};
           if (tel) params.TelefonoPrueba = tel;
           if (voz) params.VozPrueba = voz;
+          var vel = document.getElementById("velPrueba").value;
+          if (vel) params.VelocidadPrueba = vel;
           return dispositivo.connect({ params: params });
         });
       })
