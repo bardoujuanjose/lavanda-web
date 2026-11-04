@@ -181,3 +181,18 @@ test("al empezar la llamada precarga las normas con los mismos ajustes que las r
   assert.equal(pre.stream, undefined);
   for (const k of ["model", "thinking", "output_config", "system", "tools"]) assert.deepEqual(pre[k], real[k], k);
 });
+
+test("la llamada de prueba puede simular el número del cliente", async () => {
+  const r = await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA9", From: "client:prueba-lavanda", TelefonoPrueba: "612 345 678" }), ENV);
+  const t = await r.text();
+  assert.match(t, /c=CA9&amp;n=34612345678&amp;t=/);
+  // un número cambiado a mano invalida el pase
+  const pase = await paseLlamada(ENV, "CA9", "34612345678");
+  assert.notEqual(pase, await paseLlamada(ENV, "CA9", "34699999999"));
+  // la sesión usa ese número como si fuera el del llamante
+  const claude = claudeFalso([texto("Vale.")]);
+  const s = crearSesion({ env: ENV, claude, wa: {}, enviar: () => {}, numeroPrueba: "34612345678" });
+  await s.recibir(JSON.stringify({ type: "setup", from: "client:prueba-lavanda" }));
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "hola", last: true }));
+  assert.match(claude.peticiones[0].messages.at(-1).content, /llama desde el \+34612345678/);
+});

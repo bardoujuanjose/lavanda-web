@@ -51,8 +51,8 @@ export async function firmaTwilioValida(authToken, url, params, firma) {
 }
 
 // Pase para el WebSocket (solo lo puede generar quien tiene el token de Twilio)
-export async function paseLlamada(env, callSid) {
-  return aHex(await hmac("SHA-256", env.TWILIO_AUTH_TOKEN, "voz:" + callSid)).slice(0, 32);
+export async function paseLlamada(env, callSid, numeroPrueba = "") {
+  return aHex(await hmac("SHA-256", env.TWILIO_AUTH_TOKEN, "voz:" + callSid + ":" + numeroPrueba)).slice(0, 32);
 }
 
 const xml = (t) => String(t).replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]);
@@ -95,10 +95,12 @@ export async function atenderVoz(request, env, ctx) {
 
   // 1) Llega una llamada: conectar con el asistente
   if (url.pathname === "/voz") {
-    const pase = await paseLlamada(env, p.CallSid);
+    // Llamada de prueba desde el navegador: puede simular el número del cliente
+    const numeroPrueba = String(p.From || "").startsWith("client:") ? normalizarTelefono(p.TelefonoPrueba || "").slice(0, 15) : "";
+    const pase = await paseLlamada(env, p.CallSid, numeroPrueba);
     const ws = new URL("/voz/ws", url);
     ws.protocol = "wss:";
-    ws.search = new URLSearchParams({ c: p.CallSid, t: pase }).toString();
+    ws.search = new URLSearchParams({ c: p.CallSid, ...(numeroPrueba ? { n: numeroPrueba } : {}), t: pase }).toString();
     const fin = new URL("/voz/fin", url);
     fin.protocol = "https:";
     const atributos = {
@@ -162,7 +164,8 @@ async function abrirConversacion(request, env, ctx) {
   if (request.headers.get("Upgrade") !== "websocket") return new Response("Se esperaba WebSocket", { status: 426 });
   const url = new URL(request.url);
   const callSid = url.searchParams.get("c") || "";
-  if (!igual(url.searchParams.get("t") || "", await paseLlamada(env, callSid))) {
+  const numeroPrueba = url.searchParams.get("n") || "";
+  if (!igual(url.searchParams.get("t") || "", await paseLlamada(env, callSid, numeroPrueba))) {
     console.error("Voz: intento de conexión sin pase válido");
     return new Response("No autorizado", { status: 403 });
   }
@@ -176,6 +179,7 @@ async function abrirConversacion(request, env, ctx) {
     timeout: 30_000,
   });
   const sesion = crearSesion({
+    numeroPrueba,
     env, claude, wa: clienteWhatsApp(env),
     enviar: (obj) => { try { servidor.send(JSON.stringify(obj)); } catch { /* llamada colgada */ } },
   });
@@ -188,7 +192,7 @@ async function abrirConversacion(request, env, ctx) {
 }
 
 // Lógica de la conversación (independiente del WebSocket para poder probarla)
-export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() }) {
+export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora = () => Date.now() }) {
   const historial = [];
   const avisos = [];
   let llamante = "";
@@ -326,7 +330,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
       try { m = JSON.parse(texto); } catch { return; }
 
       if (m.type === "setup") {
-        llamante = normalizarTelefono(m.from || "");
+        llamante = numeroPrueba || normalizarTelefono(String(m.from || "").startsWith("client:") ? "" : m.from || "");
         precarga = precargar();
         return;
       }

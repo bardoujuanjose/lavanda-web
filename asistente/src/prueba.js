@@ -248,6 +248,7 @@ const PAGINA = `<!doctype html>
   <p>Nada de lo que escribas aquí se envía por WhatsApp. Cada respuesta gasta aprox. 1 céntimo de tu saldo de Claude.</p>
   <input id="clave" type="password" placeholder="Contraseña de pruebas" autocomplete="current-password" required>
   <input id="nombre" type="text" placeholder="Nombre del cliente (opcional, p. ej. Ana)">
+  <input id="telPrueba" type="tel" inputmode="tel" placeholder="Llamadas de prueba: simular que llamo desde… (opcional, p. ej. 612345678)">
   <p id="loginError"></p>
   <button>Entrar</button>
 </form></div>
@@ -347,7 +348,8 @@ const PAGINA = `<!doctype html>
           if (dispositivo) dispositivo.destroy();
           dispositivo = new window.Twilio.Device(d.token, { codecPreferences: ["opus", "pcmu"], logLevel: "warn" });
           estadoLl.textContent = "Llamando… (permite el micrófono si el navegador lo pide)";
-          return dispositivo.connect();
+          var tel = (document.getElementById("telPrueba").value || "").replace(/\D/g, "");
+          return dispositivo.connect(tel ? { params: { TelefonoPrueba: tel } } : {});
         });
       })
       .then(function (c) {
