@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import worker, { validarConversacion, extraerWhatsapp, preguntarAClaude } from "../src/index.js";
+import { validarConversacion, extraerWhatsapp, preguntarAClaude, atenderChatWeb } from "../src/web.js";
 
 test("acepta una conversación normal", () => {
   assert.equal(validarConversacion({ messages: [{ role: "user", content: "¿Cuánto cuesta?" }] }), null);
@@ -51,12 +51,12 @@ test("responde con amabilidad si Claude rechaza", async () => {
 
 test("el servidor responde a CORS, rechaza datos malos y avisa si falta la clave", async () => {
   const origin = "https://lavandavendrell.es";
-  let res = await worker.fetch(new Request("https://x.dev/chat", { method: "OPTIONS", headers: { Origin: origin } }), {});
+  let res = await atenderChatWeb(new Request("https://x.dev/chat", { method: "OPTIONS", headers: { Origin: origin } }), {});
   assert.equal(res.status, 204);
   assert.equal(res.headers.get("Access-Control-Allow-Origin"), origin);
-  res = await worker.fetch(new Request("https://x.dev/chat", { method: "POST", body: "{}", headers: { Origin: origin } }), {});
+  res = await atenderChatWeb(new Request("https://x.dev/chat", { method: "POST", body: "{}", headers: { Origin: origin } }), {});
   assert.equal(res.status, 400);
-  res = await worker.fetch(new Request("https://x.dev/chat", { method: "POST", headers: { Origin: origin },
+  res = await atenderChatWeb(new Request("https://x.dev/chat", { method: "POST", headers: { Origin: origin },
     body: JSON.stringify({ messages: [{ role: "user", content: "Hola" }] }) }), {});
   assert.equal(res.status, 500);
   assert.match((await res.json()).reply, /WhatsApp/);

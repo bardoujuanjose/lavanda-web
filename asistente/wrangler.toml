@@ -1,4 +1,4 @@
-# Configuración del servidor del asistente en Cloudflare Workers
+# Configuración del servidor de los asistentes en Cloudflare Workers
 name = "lavanda-asistente"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
@@ -7,9 +7,30 @@ compatibility_flags = ["nodejs_compat"]
 # Activa la dirección pública https://lavanda-asistente.bardoujuanjose.workers.dev
 workers_dev = true
 
-# La clave de Claude NO va aquí: se guarda como secreto en Cloudflare
-# (Settings → Variables and Secrets → ANTHROPIC_API_KEY).
-
 # Guarda los registros del servidor (errores, avisos) para poder revisarlos
 [observability]
 enabled = true
+
+# Memoria de cada cliente de WhatsApp (una por número de teléfono)
+[[durable_objects.bindings]]
+name = "CONVERSACIONES"
+class_name = "Conversacion"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Conversacion"]
+
+# Ajustes no secretos
+[vars]
+GRAPH_VERSION = "v23.0"
+OWNER_TEMPLATE = "aviso_lavanda"
+OWNER_TEMPLATE_LANG = "es"
+
+# SECRETOS: NO van aquí. Se guardan en Cloudflare
+# (Settings → Variables and Secrets → Runtime → tipo Secret):
+#   ANTHROPIC_API_KEY      clave de Claude
+#   WHATSAPP_TOKEN         token permanente de la app de Meta
+#   WHATSAPP_PHONE_ID      identificador del número de WhatsApp en Meta
+#   WHATSAPP_APP_SECRET    "App secret" de la app de Meta
+#   WHATSAPP_VERIFY_TOKEN  palabra secreta que inventas para conectar Meta
+#   OWNER_PHONE            tu móvil personal (donde recibes los avisos)
