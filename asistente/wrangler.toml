@@ -20,6 +20,10 @@ class_name = "Conversacion"
 tag = "v1"
 new_sqlite_classes = ["Conversacion"]
 
+# Transcripción de audios de WhatsApp (Workers AI, plan gratuito)
+[ai]
+binding = "AI"
+
 # Ajustes no secretos
 [vars]
 GRAPH_VERSION = "v23.0"

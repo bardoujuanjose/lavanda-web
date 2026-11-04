@@ -9,6 +9,21 @@ import {
   ESPERA_MS, RESPUESTA_ERROR, estadoInicial, procesarPendientes, aplicarResultado, comandoDueno,
 } from "./asistente-whatsapp.js";
 
+// Convierte un audio de WhatsApp en texto con el modelo Whisper de Cloudflare (Workers AI)
+async function transcribirAudio(ai, bytes) {
+  const datos = new Uint8Array(bytes);
+  try {
+    let binario = "";
+    for (let i = 0; i < datos.length; i += 0x8000) binario += String.fromCharCode(...datos.subarray(i, i + 0x8000));
+    const r = await ai.run("@cf/openai/whisper-large-v3-turbo", { audio: btoa(binario) });
+    if (r?.text) return r.text;
+  } catch (e) {
+    console.error("Transcripción (turbo) falló:", e?.message || e);
+  }
+  const r = await ai.run("@cf/openai/whisper", { audio: [...datos] });
+  return r?.text || "";
+}
+
 export class Conversacion extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -63,6 +78,7 @@ export class Conversacion extends DurableObject {
       });
       const resultado = await procesarPendientes({
         estado: await this.leerEstado(), pendientes, telefono, nombre, wa, claude, env: this.env,
+        transcribir: this.env.AI ? (bytes) => transcribirAudio(this.env.AI, bytes) : undefined,
       });
       await this.guardarResultado(resultado);
     } catch (e) {

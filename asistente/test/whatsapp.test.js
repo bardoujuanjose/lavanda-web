@@ -21,6 +21,7 @@ function waFalso({ fallarTextoA = null, codigo = ERROR_FUERA_DE_24H } = {}) {
     },
     async enviarPlantilla(para, nombre, idioma, params) { enviados.push({ tipo: "plantilla", para, nombre, idioma, params }); },
     async enviarImagen(para, id, pie) { enviados.push({ tipo: "imagen", para, id, pie }); },
+    async enviarAudio(para, id) { enviados.push({ tipo: "audio", para, id }); },
     async marcarLeido() {},
     async descargarMedia() { return { bytes: new Uint8Array([1, 2, 3]).buffer, tipo: "image/jpeg" }; },
     async subirMedia() { return "media-nueva"; },
@@ -104,57 +105,68 @@ test("junta varios mensajes seguidos en una sola respuesta", async () => {
   assert.equal(wa.enviados.length, 1);
 });
 
-test("incidencia de dinero: avisa al dueño con el importe y el asistente sigue atendiendo", async () => {
+test("cierre de Bizum: avisa al dueño con máquina, importe y teléfono, y sigue atendiendo", async () => {
   const wa = waFalso();
   const claude = claudeFalso([
     { stop_reason: "tool_use", content: [
       { type: "thinking", thinking: "" },
-      { type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "incidencia", resumen: "No le devolvió el cambio: metió 20 € en una lavadora M", maquina: "3", importe: "14 €", bizum: "612345678" } },
+      { type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "bizum", resumen: "El cajero no le devolvió el cambio: metió 20 € en la máquina 3 (8 €)", maquina: "3", importe: "12 €", telefono: "612345678" } },
     ] },
-    texto("Te corresponden 14 €. En un plazo de 48 horas lo comprobaremos y, si es correcto, te enviaremos el Bizum."),
+    texto("Gracias. Hemos anotado tu teléfono: 612 345 678. Lo verificamos y, en un máximo de 48 horas, recibirás los 12 € por Bizum."),
   ]);
   const r = await procesarPendientes({
     estado: estadoInicial(), pendientes: [{ id: "1", tipo: "text", texto: "la 3 se ha quedado con el dinero a las 18:30" }],
     telefono: CLIENTE, nombre: "Ana", wa, claude, env: ENV, ahora: 1000,
   });
   const aviso = wa.enviados.find((e) => e.para === DUENO);
-  assert.match(aviso.texto, /Incidencia/);
+  assert.match(aviso.texto, /Bizum pendiente de verificar/);
   assert.match(aviso.texto, /Ana/);
   assert.match(aviso.texto, /Máquina: 3/);
   assert.match(aviso.texto, /#34612345678 tu mensaje/);
-  assert.match(aviso.texto, /Bizum: 612345678/);
-  assert.match(aviso.texto, /Le corresponden: 14 €/);
-  assert.ok(wa.enviados.find((e) => e.para === CLIENTE && /14 €/.test(e.texto)));
+  assert.match(aviso.texto, /Teléfono indicado: 612345678/);
+  assert.match(aviso.texto, /Importe: 12 €/);
+  assert.ok(wa.enviados.find((e) => e.para === CLIENTE && /12 €/.test(e.texto)));
   // segunda llamada a Claude: lleva la respuesta de la herramienta
   const ultimo = claude.peticiones[1].messages.at(-1);
   assert.equal(ultimo.content[0].type, "tool_result");
   assert.equal(ultimo.content[0].tool_use_id, "t1");
   assert.equal(r.pausa, undefined); // no se queda callado
-  assert.doesNotMatch(ultimo.content[0].content, /una persona le escribirá por este/);
+  assert.match(ultimo.content[0].content, /Aviso enviado/);
 });
 
 test("si pasaron más de 24 h, el aviso al dueño va por plantilla", async () => {
   const wa = waFalso({ fallarTextoA: DUENO });
   const claude = claudeFalso([
-    { stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "hablar_con_persona", resumen: "Quiere\nhablar   con alguien", maquina: "" } }] },
+    { stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "servicio_personalizado", resumen: "Casa rural:\nlavar   sábanas cada semana", maquina: "", importe: "", telefono: "611222333" } }] },
     texto("Te paso con el equipo."),
   ]);
-  await procesarPendientes({ estado: estadoInicial(), pendientes: [{ id: "1", tipo: "text", texto: "quiero hablar con una persona" }], telefono: CLIENTE, nombre: "Ana", wa, claude, env: ENV });
+  await procesarPendientes({ estado: estadoInicial(), pendientes: [{ id: "1", tipo: "text", texto: "tengo una casa rural" }], telefono: CLIENTE, nombre: "Ana", wa, claude, env: ENV });
   const p = wa.enviados.find((e) => e.tipo === "plantilla");
   assert.equal(p.nombre, "aviso_lavanda");
   assert.equal(p.idioma, "es");
   assert.doesNotMatch(p.params[0], /\n/);
-  assert.match(p.params[0], /Quiere hablar con alguien/);
+  assert.match(p.params[0], /lavar sábanas cada semana/);
 });
 
-test("si pide hablar con una persona, el asistente se queda en pausa", async () => {
+test("los audios se transcriben y llegan a Claude como texto", async () => {
   const wa = waFalso();
-  const claude = claudeFalso([
-    { stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "hablar_con_persona", resumen: "Quiere hablar con alguien", maquina: "", importe: "", bizum: "" } }] },
-    texto("Una persona del equipo te escribirá por aquí en cuanto pueda."),
-  ]);
-  const r = await procesarPendientes({ estado: estadoInicial(), pendientes: [{ id: "1", tipo: "text", texto: "quiero hablar con una persona" }], telefono: CLIENTE, nombre: "Ana", wa, claude, env: ENV, ahora: 1000 });
-  assert.deepEqual(r.pausa, { desde: 1000, ultimoDueno: null, motivo: "hablar_con_persona" });
+  const claude = claudeFalso([texto("¿De qué máquina se trata?")]);
+  const r = await procesarPendientes({
+    estado: estadoInicial(), pendientes: [{ id: "1", tipo: "audio", mediaId: "aud1", texto: "" }],
+    telefono: CLIENTE, nombre: "", wa, claude, env: ENV, transcribir: async () => "el cajero no me ha dado el cambio",
+  });
+  assert.match(claude.peticiones[0].messages.at(-2).content[0].text, /transcrito automáticamente\]: el cajero no me ha dado el cambio/);
+  assert.match(r.anadir[0].content, /\[Audio\] el cajero/);
+});
+
+test("si el audio no se puede transcribir, Claude lo sabe", async () => {
+  const wa = waFalso();
+  const claude = claudeFalso([texto("No he podido entender bien el audio. ¿Me lo puedes escribir?")]);
+  await procesarPendientes({
+    estado: estadoInicial(), pendientes: [{ id: "1", tipo: "audio", mediaId: "aud1", texto: "" }],
+    telefono: CLIENTE, nombre: "", wa, claude, env: ENV, transcribir: async () => { throw new Error("falla"); },
+  });
+  assert.match(claude.peticiones[0].messages.at(-2).content[0].text, /no se ha podido transcribir/);
 });
 
 test("si no se puede avisar al dueño, no se pone en pausa", async () => {

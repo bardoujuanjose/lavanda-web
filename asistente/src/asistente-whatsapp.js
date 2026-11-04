@@ -14,7 +14,7 @@ const TIPOS_FOTO = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_VUELTAS = 4;
 
 export const RESPUESTA_ERROR =
-  "Perdona, he tenido un problema técnico 😕 Vuelve a escribirme en un momento o llámanos al 689 81 02 13.";
+  "Perdona, he tenido un problema técnico. Llama a uno de nuestros agentes al 689 810 213, de 8:00 a 21:00.";
 
 export function estadoInicial() {
   return { historial: [], pausa: null };
@@ -70,7 +70,7 @@ export function resumirPendientes(pendientes) {
     .map((p) => {
       if (p.tipo === "text" || p.tipo === "button" || p.tipo === "interactive") return p.texto;
       if (p.tipo === "image") return "[Foto]" + (p.texto ? " " + p.texto : "");
-      if (p.tipo === "audio") return "[Audio]";
+      if (p.tipo === "audio") return p.transcripcion ? `[Audio] ${p.transcripcion}` : "[Audio]";
       return `[${p.tipo}]`;
     })
     .filter(Boolean)
@@ -80,17 +80,22 @@ export function resumirPendientes(pendientes) {
 // ---------------------------------------------------------------------
 //  Avisar al dueño por WhatsApp
 // ---------------------------------------------------------------------
-export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, importe, bizum }) {
+export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, importe, telefonoCliente }) {
   const dueno = normalizarTelefono(env.OWNER_PHONE);
   if (!dueno) throw new Error("Falta OWNER_PHONE");
-  const titulos = { incidencia: "🔔 *Incidencia*", hablar_con_persona: "🙋 *Quiere hablar con una persona*", otro: "📌 *Aviso*" };
+  const titulos = {
+    bizum: "💸 *Bizum pendiente de verificar*",
+    servicio_personalizado: "🏡 *Servicio personalizado*",
+    justificante_factura: "🧾 *Justificante / factura*",
+    otro: "📌 *Aviso*",
+  };
   const texto = [
     titulos[motivo] || titulos.otro,
     `👤 ${nombre || "Cliente"} · ${bonito(telefono)}`,
     maquina ? `🧺 Máquina: ${maquina}` : null,
     `📝 ${resumen}`,
-    importe ? `💶 Le corresponden: ${importe}` : null,
-    bizum ? `💸 Bizum: ${bizum}` : null,
+    importe ? `💶 Importe: ${importe}` : null,
+    telefonoCliente ? `📞 Teléfono indicado: ${telefonoCliente}` : null,
     "",
     "Para contestarle escribe:",
     `#${telefono} tu mensaje`,
@@ -102,7 +107,7 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
   } catch (e) {
     if (e.code !== ERROR_FUERA_DE_24H) throw e;
     // Han pasado más de 24 h desde tu último mensaje al número del negocio: Meta exige una plantilla aprobada
-    const linea = `${(titulos[motivo] || titulos.otro).replace(/[*]/g, "")} - ${nombre || "Cliente"} (${bonito(telefono)})${maquina ? " - máquina " + maquina : ""}: ${resumen}${importe ? " - le corresponden " + importe : ""}${bizum ? " - Bizum " + bizum : ""}`
+    const linea = `${(titulos[motivo] || titulos.otro).replace(/[*]/g, "")} - ${nombre || "Cliente"} (${bonito(telefono)})${maquina ? " - máquina " + maquina : ""}: ${resumen}${importe ? " - importe " + importe : ""}${telefonoCliente ? " - teléfono " + telefonoCliente : ""}`
       .replace(/\s+/g, " ").slice(0, 900);
     await wa.enviarPlantilla(dueno, env.OWNER_TEMPLATE || "aviso_lavanda", env.OWNER_TEMPLATE_LANG || "es", [linea]);
   }
@@ -112,7 +117,7 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
 //  Procesa los mensajes acumulados de un cliente
 //  Devuelve { anadir: [...mensajes para la memoria], pausa: undefined | null | {...} }
 // ---------------------------------------------------------------------
-export async function procesarPendientes({ estado, pendientes, telefono, nombre, wa, claude, env, ahora = Date.now() }) {
+export async function procesarPendientes({ estado, pendientes, telefono, nombre, wa, claude, env, transcribir, ahora = Date.now() }) {
   const resultado = { anadir: [], pausa: undefined };
   let pausa = estado.pausa;
   if (pausaCaducada(pausa, ahora)) { pausa = null; resultado.pausa = null; }
@@ -128,6 +133,11 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
           const foto = await wa.descargarMedia(p.mediaId);
           const id = await wa.subirMedia(foto.bytes, foto.tipo);
           await wa.enviarImagen(dueno, id, `📷 ${nombre || "Cliente"} (${bonito(telefono)})${p.texto ? ": " + p.texto : ""}`);
+        } else if (p.tipo === "audio" && p.mediaId) {
+          const audio = await wa.descargarMedia(p.mediaId);
+          const id = await wa.subirMedia(audio.bytes, audio.tipo);
+          await wa.enviarTexto(dueno, `🎤 Audio de ${nombre || "Cliente"} (${bonito(telefono)}). Responde con: #${telefono} tu mensaje`);
+          await wa.enviarAudio(dueno, id);
         } else {
           await wa.enviarTexto(dueno, `💬 ${nombre || "Cliente"} (${bonito(telefono)}):\n${resumirPendientes([p])}\n\nResponde con: #${telefono} tu mensaje`);
         }
@@ -159,7 +169,22 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
       }
       bloques.push({ type: "text", text: "[El cliente ha enviado una foto que no se ha podido abrir]" + (p.texto ? " " + p.texto : "") });
     } else if (p.tipo === "audio") {
-      bloques.push({ type: "text", text: "[El cliente ha enviado un audio; no puedes escucharlo]" });
+      let transcripcion = "";
+      if (p.mediaId && transcribir) {
+        try {
+          const audio = await wa.descargarMedia(p.mediaId);
+          transcripcion = String((await transcribir(audio.bytes, audio.tipo)) || "").trim();
+        } catch (e) {
+          console.error("No se pudo transcribir el audio:", e.message);
+        }
+      }
+      p.transcripcion = transcripcion;
+      bloques.push({
+        type: "text",
+        text: transcripcion
+          ? `[Audio del cliente, transcrito automáticamente]: ${transcripcion}`
+          : "[El cliente ha enviado un audio que no se ha podido transcribir]",
+      });
     } else if (p.texto) {
       bloques.push({ type: "text", text: p.texto });
     } else {
@@ -213,17 +238,14 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
       } else {
         try {
           const datos = typeof uso.input === "string" ? JSON.parse(uso.input) : uso.input;
-          await avisarDueno({ env, wa, telefono, nombre, motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, importe: datos.importe, bizum: datos.bizum });
-          if (datos.motivo === "hablar_con_persona") {
-            // Solo cuando el cliente quiere hablar con una persona, el asistente se calla y atiende el dueño
-            resultado.pausa = { desde: ahora, ultimoDueno: null, motivo: datos.motivo };
-            contenido = "Aviso enviado al equipo. Dile que una persona del equipo le escribirá por este mismo chat en cuanto pueda.";
-          } else {
-            contenido = "Aviso enviado al equipo. Responde al cliente según tus instrucciones para esta incidencia; no digas que una persona le escribirá.";
-          }
+          await avisarDueno({
+            env, wa, telefono, nombre,
+            motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, importe: datos.importe, telefonoCliente: datos.telefono,
+          });
+          contenido = "Aviso enviado al equipo. Continúa la conversación según tus normas (por ejemplo, confirma el teléfono y cierra el caso).";
         } catch (e) {
           console.error("No se pudo avisar al dueño:", e.message);
-          contenido = "No se ha podido avisar al equipo. Discúlpate y pide al cliente que llame al 689 81 02 13.";
+          contenido = "No se ha podido enviar el aviso al equipo. Pide disculpas y di: \"Llama a uno de nuestros agentes al 689 810 213, de 8:00 a 21:00.\"";
           esError = true;
         }
       }
@@ -232,10 +254,11 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
     mensajes.push({ role: "user", content: resultados });
   }
 
-  if (!respuesta) respuesta = resultado.pausa ? "He avisado al equipo de Lavanda. Una persona te escribirá por aquí en cuanto pueda 🙏" : RESPUESTA_ERROR;
+  if (!respuesta) respuesta = RESPUESTA_ERROR;
   await wa.enviarTexto(telefono, respuesta);
 
-  resultado.anadir.push({ role: "user", content: resumen || "[mensaje]" }, { role: "assistant", content: respuesta });
+  // el resumen se rehace aquí para incluir la transcripción de los audios
+  resultado.anadir.push({ role: "user", content: resumirPendientes(pendientes) || "[mensaje]" }, { role: "assistant", content: respuesta });
   return resultado;
 }
 

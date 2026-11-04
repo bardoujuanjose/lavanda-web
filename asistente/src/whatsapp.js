@@ -56,7 +56,7 @@ export function extraerMensajes(payload) {
             m.interactive?.button_reply?.title ??
             m.interactive?.list_reply?.title ??
             "",
-          mediaId: m.image?.id || null,
+          mediaId: m.image?.id || m.audio?.id || null,
         });
       }
     }
@@ -105,6 +105,8 @@ export function clienteWhatsApp(env, fetchImpl = fetch) {
         },
       }),
 
+    enviarAudio: (para, mediaId) => enviar({ to: para, type: "audio", audio: { id: mediaId } }),
+
     enviarImagen: (para, mediaId, pie) =>
       enviar({ to: para, type: "image", image: { id: mediaId, caption: String(pie || "").slice(0, 1024) } }),
 
@@ -129,7 +131,7 @@ export function clienteWhatsApp(env, fetchImpl = fetch) {
       const formulario = new FormData();
       formulario.append("messaging_product", "whatsapp");
       formulario.append("type", tipo);
-      formulario.append("file", new Blob([bytes], { type: tipo }), "foto");
+      formulario.append("file", new Blob([bytes], { type: tipo }), tipo.startsWith("audio") ? "audio.ogg" : "foto.jpg");
       const datos = await llamar(`${base}/${env.WHATSAPP_PHONE_ID}/media`, { method: "POST", headers: auth, body: formulario });
       return datos.id;
     },

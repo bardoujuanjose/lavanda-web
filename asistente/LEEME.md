@@ -29,13 +29,17 @@ WhatsApp:  cliente → Meta → /whatsapp → memoria ──┴→ Claude
 
 1. El asistente espera 3 segundos por si el cliente manda varios mensajes y contesta a todos juntos.
 2. Recuerda los últimos 30 mensajes de cada cliente.
-3. Si hay una incidencia o el cliente quiere hablar con una persona, **avisa al dueño** por WhatsApp
-   y se queda callado en ese chat (los mensajes nuevos del cliente se reenvían al dueño).
-4. El dueño contesta escribiendo al número de Lavanda desde su móvil:
+3. Sigue las normas de Lavanda (las que se usaban en Botpress): "no arranca" paso a paso, casos de
+   cambio y Bizum, derivar al teléfono, fidelización, justificantes, etc.
+4. Los audios se transcriben con Workers AI (Whisper). Las fotos las ve Claude directamente.
+5. **Avisa al dueño** por WhatsApp al cerrar un Bizum (máquina, importe y teléfono), al recoger un
+   servicio personalizado o los datos de un justificante o factura. Después sigue atendiendo.
+6. El dueño puede contestar a un cliente escribiendo al número de Lavanda desde su móvil
+   (mientras tanto el asistente se calla con ese cliente y le reenvía sus mensajes):
    - `#34612345678 Hola, ya lo hemos revisado` → el cliente lo recibe desde el número de Lavanda.
    - `#34612345678 fin` → el asistente vuelve a atender a ese cliente.
    - `ayuda` → instrucciones.
-5. Si nadie del equipo escribe en 12 horas, el asistente vuelve a atender solo.
+7. Si nadie del equipo escribe en 12 horas, el asistente vuelve a atender solo.
 
 Si el dueño no ha escrito al número de Lavanda en las últimas 24 horas, WhatsApp no deja enviarle
 mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lavanda`
