@@ -6,3 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # La clave de Claude NO va aquí: se guarda como secreto en Cloudflare
 # (Settings → Variables and Secrets → ANTHROPIC_API_KEY).
+
+# Guarda los registros del servidor (errores, avisos) para poder revisarlos
+[observability]
+enabled = true
