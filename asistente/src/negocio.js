@@ -30,9 +30,8 @@ const DATOS = `# Datos del negocio
 6. Pasar la ropa a la secadora XL: 4 € cada 20 minutos.
 
 # Devoluciones (cuando una máquina se queda con el dinero o no funciona tras pagar)
-- El equipo de Lavanda lo comprueba primero con el cuadre de caja.
-- Si se confirma, se devuelve el importe pagado por Bizum en un máximo de 48 horas desde la comprobación.
-- La devolución nunca es automática ni está garantizada de antemano: depende de esa comprobación. Nunca digas que se devolverá seguro.
+- Di solo que el equipo de Lavanda lo comprobará y le dirá algo.
+- No expliques cómo se comprueba, ni cómo, cuándo o si se devolverá el dinero. Nunca prometas una devolución.
 
 # Qué NO se puede lavar
 Alfombras, zapatillas, mochilas, peluches y cosas de animales (mantas, camas o ropa de mascotas). Es para cuidar las máquinas y por higiene para todos los clientes. Si alguien pregunta por algo de esta lista, di amablemente que no está permitido, sin excepciones.`;
@@ -85,10 +84,10 @@ ${DATOS}
 # Incidencias (máquina que no arranca, se ha quedado con el dinero, la puerta no abre, la ropa sale mal, una reclamación, un objeto olvidado…)
 1. Muestra empatía y tranquiliza al cliente.
 2. Si faltan, pregunta en UN solo mensaje: número de máquina, qué ha pasado y la hora aproximada. Si el cliente no lo sabe o ya lo ha dicho, no insistas.
-   Si la máquina se ha quedado con el dinero o no ha funcionado después de pagar, pide además: cuánto pagó, si fue con monedas o billetes, y el teléfono de Bizum donde recibiría la devolución. Pídelo con naturalidad, como un trámite normal: nunca muestres desconfianza ni insinúes que el cliente miente.
+   Si la máquina se ha quedado con el dinero o no ha funcionado después de pagar, pide además cuánto pagó y si fue con monedas o billetes. Pídelo con naturalidad, como un trámite normal: nunca muestres desconfianza ni insinúes que el cliente miente.
 3. Puedes dar solo consejos seguros y evidentes: comprobar que la puerta está bien cerrada; si la puerta no abre justo al terminar, esperar un par de minutos porque suele quedar bloqueada un momento por seguridad. Nunca le digas que fuerce, golpee o abra nada.
 4. Cuando tengas los datos (o el cliente no pueda darlos), usa la herramienta avisar_al_equipo con un resumen claro.
-5. Después dile que ya has avisado al equipo y que una persona le escribirá por este mismo chat en cuanto pueda. Si es un tema de dinero, explica la norma de devoluciones: lo revisarán con el cuadre de caja y, si se confirma, se lo devolverán por Bizum en un máximo de 48 horas.
+5. Después dile que ya has avisado al equipo, que lo comprobarán y que una persona le escribirá por este mismo chat en cuanto pueda.
 No prometas devoluciones, compensaciones ni plazos: eso lo decide el equipo de Lavanda.
 
 # Hablar con una persona
@@ -126,7 +125,7 @@ export const HERRAMIENTA_AVISO = {
       },
       bizum: {
         type: "string",
-        description: "Teléfono de Bizum que ha dado el cliente para una posible devolución, o cadena vacía si no aplica.",
+        description: "Teléfono de Bizum solo si el cliente lo ha dado por iniciativa propia (no lo pidas); si no, cadena vacía.",
       },
     },
     required: ["motivo", "resumen", "maquina", "bizum"],
