@@ -201,9 +201,17 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
     );
   }
 
+  // La memoria (historial) guarda solo texto, igual que en WhatsApp. Dentro de un turno,
+  // las llamadas a herramientas van en una lista aparte que solo crece (sin modificar nada).
   async function responder() {
+    const mensajes = [...historial, { role: "system", content: sistema() }];
+    let textoTurno = "";
+    const guardar = (extra) => {
+      const t = (textoTurno + (extra || "")).trim();
+      if (t) historial.push({ role: "assistant", content: t });
+    };
     for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
-      const control = { cortada: false, stream: null, dicho: "" };
+      const control = { cortada: false, stream: null, dicho: "", previo: textoTurno };
       actual = control;
       const stream = claude.beta.messages.stream({
         model: MODELO,
@@ -213,7 +221,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
         fallbacks: "default",
         system: [{ type: "text", text: INSTRUCCIONES_VOZ, cache_control: { type: "ephemeral" } }],
         tools: [HERRAMIENTA_AVISO, HERRAMIENTA_PASAR_LLAMADA],
-        messages: [...historial, { role: "system", content: sistema() }],
+        messages: mensajes,
       });
       control.stream = stream;
       stream.on("text", (t) => {
@@ -232,15 +240,20 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
       actual = null;
       enviar({ type: "text", token: "", last: true });
       if (control.dicho) console.log(`Voz [asistente]: ${control.dicho}`);
+      textoTurno += (textoTurno && control.dicho ? " " : "") + control.dicho;
 
       if (msg.stop_reason === "refusal") {
-        historial.push({ role: "assistant", content: "Perdona, con eso no puedo ayudarte." });
-        enviar({ type: "text", token: "Perdona, con eso no puedo ayudarte.", last: true });
+        const t = "Perdona, con eso no puedo ayudarte.";
+        enviar({ type: "text", token: t, last: true });
+        guardar(" " + t);
         return;
       }
-      historial.push({ role: "assistant", content: msg.content });
       const usos = msg.content.filter((b) => b.type === "tool_use");
-      if (msg.stop_reason !== "tool_use" || !usos.length) return;
+      if (msg.stop_reason !== "tool_use" || !usos.length) {
+        guardar();
+        return;
+      }
+      mensajes.push({ role: "assistant", content: msg.content });
 
       const resultados = [];
       for (const uso of usos) {
@@ -248,6 +261,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
         console.log(`Voz [herramienta ${uso.name}]: ${JSON.stringify(datos)}`);
         if (uso.name === HERRAMIENTA_PASAR_LLAMADA.name) {
           terminada = true;
+          guardar(" [pasa la llamada a un compañero]");
           enviar({ type: "end", handoffData: JSON.stringify({ accion: "pasar", resumen: String(datos.resumen || "").slice(0, 300) }) });
           return;
         }
@@ -273,8 +287,9 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
         }
         resultados.push({ type: "tool_result", tool_use_id: uso.id, content: contenido });
       }
-      historial.push({ role: "user", content: resultados });
+      mensajes.push({ role: "user", content: resultados });
     }
+    guardar();
   }
 
   return {
@@ -293,7 +308,8 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
         if (actual && !actual.cortada) {
           actual.cortada = true;
           actual.stream?.abort?.();
-          if (actual.dicho) historial.push({ role: "assistant", content: (m.utteranceUntilInterrupt || actual.dicho) + " [interrumpido]" });
+          const oido = ((actual.previo ? actual.previo + " " : "") + (m.utteranceUntilInterrupt || actual.dicho)).trim();
+          if (oido) historial.push({ role: "assistant", content: oido + " [interrumpido]" });
         }
         return;
       }

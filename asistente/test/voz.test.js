@@ -133,3 +133,24 @@ test("en la prueba desde el navegador no intenta pasar la llamada", async () => 
   assert.match(t, /Aquí te pasaría con un compañero/);
   assert.doesNotMatch(t, /<Dial/);
 });
+
+test("la memoria entre turnos es solo texto y nunca se modifica lo ya enviado", async () => {
+  const claude = claudeFalso([
+    { stop_reason: "end_turn", content: [{ type: "thinking", thinking: "", signature: "x" }, { type: "text", text: "Te corresponden cuatro euros. ¿Cuál es tu teléfono?" }] },
+    { stop_reason: "tool_use", content: [{ type: "thinking", thinking: "", signature: "y" }, { type: "tool_use", id: "t1", name: "avisar_al_equipo", input: { motivo: "bizum", resumen: "c", maquina: "1", importe: "4 €", telefono: "611111111" } }] },
+    texto("Gracias, anotado."),
+  ]);
+  const wa = { enviarTexto: async () => {} };
+  const s = crearSesion({ env: ENV, claude, wa, enviar: () => {} });
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "he puesto 10 euros en la 1 y no me ha dado cambio", last: true }));
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "611111111", last: true }));
+  // 2ª petición: el turno anterior del asistente va como texto, sin bloques de razonamiento
+  const p2 = claude.peticiones[1].messages;
+  assert.equal(typeof p2[1].content, "string");
+  assert.deepEqual(p2.map((m) => m.role), ["user", "assistant", "user", "system"]);
+  // 3ª petición (tras la herramienta): lo enviado en la 2ª se mantiene igual y solo se añade al final
+  const p3 = claude.peticiones[2].messages;
+  assert.deepEqual(p3.slice(0, p2.length), p2);
+  assert.deepEqual(p3.slice(p2.length).map((m) => m.role), ["assistant", "user"]);
+  assert.deepEqual(s.historial.map((m) => typeof m.content), ["string", "string", "string", "string"]);
+});
