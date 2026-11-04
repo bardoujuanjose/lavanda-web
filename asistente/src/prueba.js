@@ -225,7 +225,8 @@ const PAGINA = `<!doctype html>
     <div id="llamadaEstado" style="margin:14px 0;font-size:1.05rem">Preparando…</div>
     <label for="vozPrueba" style="font-size:.9rem">Voz para esta llamada:</label>
     <select id="vozPrueba" style="width:100%;padding:9px;margin:6px 0 12px;border:1px solid #ccd;border-radius:8px;font-size:1rem">
-      <option value="">Actual (Amazon Lucía)</option>
+      <option value="">Actual (ElevenLabs, la elegida)</option>
+      <option value="Amazon|Lucia-Neural">Amazon · Lucía</option>
       <option value="Amazon|Lucia-Generative">Amazon · Lucía generativa</option>
       <option value="Google|es-ES-Chirp3-HD-Aoede">Google · Aoede</option>
       <option value="Google|es-ES-Chirp3-HD-Kore">Google · Kore</option>

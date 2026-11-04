@@ -32,8 +32,9 @@ WHATSAPP_WABA_ID = "1781568759662157"
 OWNER_TEMPLATE = "aviso_lavanda"
 # Voz del asistente telefónico (Twilio ConversationRelay)
 VOZ_IDIOMA = "es-ES"
-VOZ_TTS_PROVIDER = "Amazon"
-VOZ_VOZ = "Lucia-Neural"
+VOZ_TTS_PROVIDER = "ElevenLabs"
+# Voz elegida en la biblioteca de ElevenLabs (Voice ID)
+VOZ_VOZ = "2BJPFS2QZRUEpfkbclGy"
 OWNER_TEMPLATE_LANG = "es"
 
 # SECRETOS: NO van aquí. Se guardan en Cloudflare
