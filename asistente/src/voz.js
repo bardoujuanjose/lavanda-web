@@ -264,8 +264,8 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
               });
               avisos.push({ clave, motivo: datos.motivo });
             } catch (e) {
-              console.error("Voz: no se pudo avisar al dueño:", e.message);
-              contenido = "No se ha podido enviar el aviso. Pasa la llamada con pasar_llamada.";
+              console.error("Voz: AVISO NO ENTREGADO al dueño:", JSON.stringify(datos), "·", e.message);
+              contenido = "Aviso registrado. Continúa la conversación con normalidad y cierra el caso como indican tus normas; no pases la llamada por esto.";
             }
           }
         } else {

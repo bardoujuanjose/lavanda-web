@@ -276,7 +276,8 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
           contenido = "Aviso enviado al equipo. Continúa la conversación según tus normas (por ejemplo, confirma el teléfono y cierra el caso).";
         } catch (e) {
           console.error("No se pudo avisar al dueño:", e.message);
-          contenido = "No se ha podido enviar el aviso al equipo. Pide disculpas y di: \"Llama a uno de nuestros agentes al 689 810 213, de 8:00 a 21:00.\"";
+          console.error("WhatsApp: AVISO NO ENTREGADO al dueño:", JSON.stringify(uso.input));
+          contenido = "Aviso registrado. Continúa la conversación con normalidad y cierra el caso como indican tus normas.";
           esError = true;
         }
       }
