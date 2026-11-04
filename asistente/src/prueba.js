@@ -186,13 +186,21 @@ const PAGINA = `<!doctype html>
   function añadir(clase, texto, img) {
     var d = document.createElement("div"); d.className = clase;
     if (img) { var i = document.createElement("img"); i.src = img; d.appendChild(i); }
-    if (texto) d.appendChild(document.createTextNode(texto));
+    if (texto) conNegritas(d, texto);
     log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
+  }
+  // Como WhatsApp: *texto* se ve en negrita
+  function conNegritas(destino, texto) {
+    var partes = texto.split(/\*([^*\n]+)\*/);
+    partes.forEach(function (p, i) {
+      if (i % 2) { var b = document.createElement("b"); b.textContent = p; destino.appendChild(b); }
+      else if (p) destino.appendChild(document.createTextNode(p));
+    });
   }
   function aviso(texto) {
     var d = document.createElement("div"); d.className = "aviso";
     var b = document.createElement("b"); b.textContent = "📲 Aviso que te llegaría a tu móvil:"; d.appendChild(b);
-    d.appendChild(document.createTextNode(texto)); log.appendChild(d); log.scrollTop = log.scrollHeight;
+    conNegritas(d, texto); log.appendChild(d); log.scrollTop = log.scrollHeight;
   }
   function verPausa() { document.getElementById("pausa").classList.toggle("on", pausa); }
   function inicio() {
