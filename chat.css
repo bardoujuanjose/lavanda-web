@@ -1,0 +1,142 @@
+/* =====================================================================
+   Estilos del chat del asistente de Lavanda
+   Usa los colores definidos en styles.css (:root)
+   ===================================================================== */
+
+/* Con chat activo, el botón de WhatsApp sube para no pisarse */
+.has-chat .wa-float { bottom: 90px; width: 52px; height: 52px; right: 21px; }
+
+.lc-launcher {
+  position: fixed; right: 16px; bottom: 16px; z-index: 30;
+  width: 62px; height: 62px; border: 0; border-radius: 50%;
+  background: var(--grad); color: #fff; cursor: pointer;
+  display: grid; place-items: center;
+  box-shadow: 0 10px 24px rgba(83, 33, 125, .4);
+  transition: transform .15s ease;
+}
+.lc-launcher:active { transform: scale(.94); }
+.lc-launcher:focus-visible, .lc-panel button:focus-visible, .lc-panel a:focus-visible, .lc-panel textarea:focus-visible {
+  outline: 3px solid var(--verde); outline-offset: 3px;
+}
+
+.lc-teaser {
+  position: fixed; right: 88px; bottom: 30px; z-index: 30;
+  background: #fff; color: var(--indigo);
+  font-weight: 800; font-size: .9rem;
+  padding: 8px 14px; border-radius: 14px 14px 4px 14px;
+  box-shadow: 0 6px 18px rgba(83, 33, 125, .2);
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+  transition: opacity .3s, transform .3s;
+}
+.lc-teaser.is-visible { opacity: 1; transform: none; }
+
+/* ---------- Panel ---------- */
+.lc-panel {
+  position: fixed; z-index: 40;
+  inset: 0;                                   /* móvil: pantalla completa */
+  display: flex; flex-direction: column;
+  background: var(--crema);
+  font-family: var(--texto);
+}
+.lc-panel[hidden] { display: none; }
+.chat-open body { overflow: hidden; }
+.chat-open .lc-launcher, .chat-open .wa-float, .chat-open .lc-teaser { display: none; }
+
+.lc-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; padding-top: max(12px, env(safe-area-inset-top));
+  background: var(--grad); color: #fff;
+}
+.lc-head img { width: 40px; height: 40px; border-radius: 50%; background: #fff; padding: 2px; }
+.lc-head div { flex: 1; }
+.lc-title { margin: 0; font-family: var(--titulos); font-weight: 700; font-size: 1.15rem; line-height: 1.1; }
+.lc-sub { margin: 2px 0 0; font-size: .82rem; opacity: .9; display: flex; align-items: center; gap: 6px; }
+.lc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--verde); }
+.lc-close {
+  width: 40px; height: 40px; border: 0; border-radius: 50%;
+  background: rgba(255,255,255,.18); color: #fff; font-size: 1.1rem; cursor: pointer;
+}
+
+.lc-log {
+  flex: 1; overflow-y: auto; padding: 16px 14px 8px;
+  display: flex; flex-direction: column; gap: 10px;
+  overscroll-behavior: contain;
+}
+.lc-msg { max-width: 85%; padding: 10px 14px; border-radius: 18px; font-size: 1rem; line-height: 1.45; }
+.lc-msg p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lc-bot { align-self: flex-start; background: #fff; color: var(--tinta); border: 2px solid var(--borde); border-bottom-left-radius: 6px; }
+.lc-user { align-self: flex-end; background: var(--grad); color: #fff; border-bottom-right-radius: 6px; }
+
+.lc-wa {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 10px; padding: 9px 14px; border-radius: 999px;
+  background: var(--wa); color: #fff; font-weight: 800; font-size: .92rem; text-decoration: none;
+}
+
+.lc-typing { display: flex; gap: 5px; padding: 14px 16px; }
+.lc-typing span { width: 8px; height: 8px; border-radius: 50%; background: var(--lila-oscuro, #b48fd0); animation: lc-bounce 1.2s infinite; }
+.lc-typing span:nth-child(2) { animation-delay: .15s; }
+.lc-typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes lc-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+
+.lc-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 14px 10px; }
+.lc-chips[hidden] { display: none; }
+.lc-chip {
+  border: 2px solid var(--morado); background: #fff; color: var(--morado);
+  border-radius: 999px; padding: 7px 12px;
+  font: 700 .88rem var(--texto); cursor: pointer;
+}
+.lc-chip:hover { background: var(--lila); }
+
+.lc-form {
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 10px 12px; background: #fff; border-top: 2px solid var(--borde);
+}
+.lc-form textarea {
+  flex: 1; resize: none; min-height: 46px; max-height: 120px;
+  border: 2px solid var(--borde); border-radius: 22px;
+  padding: 11px 16px; font: 1rem var(--texto); color: var(--tinta); background: var(--crema);
+}
+.lc-send {
+  flex-shrink: 0; width: 46px; height: 46px; border: 0; border-radius: 50%;
+  background: var(--grad); color: #fff; cursor: pointer; display: grid; place-items: center;
+}
+.lc-form.is-busy .lc-send { opacity: .5; pointer-events: none; }
+.lc-legal {
+  margin: 0; padding: 0 14px 10px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+  background: #fff; font-size: .72rem; color: var(--tinta-suave); text-align: center;
+}
+.lc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.lc-launcher.is-hidden, .lc-teaser.is-hidden { opacity: 0; transform: scale(.6); pointer-events: none; }
+.lc-launcher { transition: transform .15s ease, opacity .25s; }
+
+/* Enlace al asistente en la portada */
+.hero-chat {
+  display: block; margin: 12px auto 0; padding: 6px 10px;
+  border: 0; background: none; cursor: pointer;
+  font: 600 1rem var(--texto); color: var(--morado);
+  text-decoration: underline; text-underline-offset: 4px;
+}
+.hero-chat[hidden] { display: none; }
+@media (min-width: 760px) { .hero-chat { margin-left: 0; padding-left: 0; } }
+
+/* Botón "Preguntar al asistente" dentro de la web */
+.btn-chat { background: #fff; color: var(--morado); box-shadow: 0 8px 22px rgba(0,0,0,.18); }
+.btn-chat[hidden] { display: none; }
+
+/* ---------- Ordenador: ventana flotante ---------- */
+@media (min-width: 640px) {
+  .lc-panel {
+    inset: auto 20px 20px auto;
+    width: 390px; height: min(620px, calc(100vh - 40px));
+    border-radius: 24px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(42, 27, 69, .35);
+  }
+  .chat-open body { overflow: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-typing span { animation: none; }
+  .lc-teaser { transition: none; }
+}

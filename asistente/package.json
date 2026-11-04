@@ -1,0 +1,18 @@
+{
+  "name": "lavanda-asistente",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Asistente virtual de la lavandería Lavanda (El Vendrell)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.157.0"
+  }
+}

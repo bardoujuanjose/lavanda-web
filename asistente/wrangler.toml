@@ -1,0 +1,8 @@
+# Configuración del servidor del asistente en Cloudflare Workers
+name = "lavanda-asistente"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# La clave de Claude NO va aquí: se guarda como secreto en Cloudflare
+# (Settings → Variables and Secrets → ANTHROPIC_API_KEY).
