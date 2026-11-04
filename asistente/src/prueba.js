@@ -8,6 +8,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { procesarPendientes, aplicarResultado, RESPUESTA_ERROR } from "./asistente-whatsapp.js";
 import { normalizarTelefono } from "./whatsapp.js";
+import { estadoConexion, conectarApp } from "./conexion.js";
 
 const CLIENTE = "34600000001";
 const MAX_FOTO_BASE64 = 6_000_000;
@@ -62,10 +63,16 @@ export async function atenderPrueba(request, env) {
   if (pathname === "/prueba" && request.method === "GET") {
     return new Response(PAGINA, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
   }
-  if (pathname !== "/prueba/mensaje" || request.method !== "POST") return json({ error: "No encontrado" }, 404);
+  const rutas = ["/prueba/mensaje", "/prueba/whatsapp-estado", "/prueba/whatsapp-conectar"];
+  if (!rutas.includes(pathname) || request.method !== "POST") return json({ error: "No encontrado" }, 404);
 
   if (!env.PRUEBA_CLAVE) return json({ error: "Falta configurar el secreto PRUEBA_CLAVE en Cloudflare." }, 503);
   if (!claveCorrecta(env, request.headers.get("X-Clave"))) return json({ error: "Contraseña incorrecta." }, 401);
+
+  if (pathname === "/prueba/whatsapp-estado") return json(await estadoConexion(env));
+  if (pathname === "/prueba/whatsapp-conectar") {
+    try { return json(await conectarApp(env)); } catch (e) { return json({ ok: false, error: e.message }, 502); }
+  }
 
   let body;
   try { body = await request.json(); } catch { return json({ error: "Petición no válida." }, 400); }
@@ -155,11 +162,20 @@ const PAGINA = `<!doctype html>
   #login button { padding: 12px; font-size: 1rem; border: 0; border-radius: 8px; background: var(--verde); color: #fff; cursor: pointer; }
   #login p { margin: 0; font-size: .9rem; color: var(--gris); }
   #loginError { color: #b3261e !important; }
+  #panelWa { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 5; }
+  #panelWa[hidden] { display: none; }
+  #panelWa .caja { background: #fff; border-radius: 14px; padding: 18px; width: min(460px, 100%); max-height: 90vh; overflow: auto; }
+  #waInfo { margin: 10px 0; font-size: .95rem; line-height: 1.5; }
+  #waInfo .ok { color: #1b7a33; font-weight: 700; } #waInfo .mal { color: #b3261e; font-weight: 700; }
+  #panelWa .botones { display: flex; gap: 8px; flex-wrap: wrap; }
+  #panelWa button { border: 0; border-radius: 8px; padding: 10px 14px; font: inherit; cursor: pointer; background: #e9edef; }
+  #waConectar { background: #075e54 !important; color: #fff; font-weight: 700; }
 </style>
 </head>
 <body>
 <header>
   <div class="t"><b>Lavanda · prueba del asistente</b><small>Escribe como si fueras un cliente</small></div>
+  <button id="conexion" type="button">WhatsApp</button>
   <button id="nuevo" type="button">Empezar de cero</button>
 </header>
 <div id="pausa"><span>⏸️ El equipo está atendiendo: el asistente no contesta y te reenvía los mensajes.</span><button id="fin" type="button">Devolver al asistente</button></div>
@@ -171,6 +187,16 @@ const PAGINA = `<!doctype html>
   <textarea id="t" rows="1" placeholder="Escribe un mensaje" aria-label="Mensaje"></textarea>
   <button class="redondo" aria-label="Enviar">➤</button>
 </form>
+<div id="panelWa" hidden>
+  <div class="caja">
+    <b>Conexión con WhatsApp</b>
+    <div id="waInfo">Comprobando…</div>
+    <div class="botones">
+      <button id="waConectar" type="button" hidden>Conectar mi app a WhatsApp</button>
+      <button id="waCerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
 <div id="login"><form id="lf">
   <b>Chat de pruebas del asistente de WhatsApp</b>
   <p>Nada de lo que escribas aquí se envía por WhatsApp. Cada respuesta gasta aprox. 1 céntimo de tu saldo de Claude.</p>
@@ -212,6 +238,34 @@ const PAGINA = `<!doctype html>
     document.getElementById("login").style.display = "none"; inicio(); t.focus();
   });
   document.getElementById("nuevo").onclick = inicio;
+
+  // ---- Conexión con WhatsApp ----
+  var panelWa = document.getElementById("panelWa"), waInfo = document.getElementById("waInfo"), waConectar = document.getElementById("waConectar");
+  function linea(ok, texto) { return '<div><span class="' + (ok ? "ok" : "mal") + '">' + (ok ? "✔" : "✘") + "</span> " + texto + "</div>"; }
+  function esc(t) { var d = document.createElement("div"); d.textContent = t == null ? "" : String(t); return d.innerHTML; }
+  function pintarWa(d) {
+    var h = "";
+    if (d.faltan && d.faltan.length) h += linea(false, "Faltan secretos en Cloudflare: " + esc(d.faltan.join(", ")));
+    if (d.numero) h += linea(true, "Número: " + esc(d.numero.display_phone_number) + " · " + esc(d.numero.verified_name) + " · calidad " + esc(d.numero.quality_rating));
+    if (d.apps) {
+      h += "<div style='margin-top:6px'>Apps que reciben los mensajes de este WhatsApp:</div><ul style='margin:4px 0 0 18px;padding:0'>" +
+        (d.apps.length ? d.apps.map(function (a) { return "<li>" + esc(a.nombre) + (a.id === d.appId ? " <b>(tu app)</b>" : "") + "</li>"; }).join("") : "<li>ninguna</li>") + "</ul>";
+      h += linea(d.miAppConectada, d.miAppConectada ? "Tu app recibe los mensajes." : "Tu app todavía NO recibe los mensajes.");
+      if (d.apps.some(function (a) { return a.id !== d.appId; })) h += "<div style='margin-top:6px;color:#7a5d00'>⚠️ Hay otra app conectada (probablemente Botpress). Si sigue activa, los clientes podrían recibir dos respuestas.</div>";
+    }
+    if (d.error) h += linea(false, esc(d.error));
+    waInfo.innerHTML = h || "Sin datos.";
+    waConectar.hidden = !(d.waba && !d.miAppConectada);
+  }
+  function llamarWa(ruta) {
+    waInfo.textContent = "Un momento…";
+    return fetch(ruta, { method: "POST", headers: { "X-Clave": clave } })
+      .then(function (r) { return r.json(); }).then(pintarWa)
+      .catch(function () { waInfo.textContent = "No se ha podido conectar con el servidor."; });
+  }
+  document.getElementById("conexion").onclick = function () { panelWa.hidden = false; llamarWa("/prueba/whatsapp-estado"); };
+  document.getElementById("waCerrar").onclick = function () { panelWa.hidden = true; };
+  waConectar.onclick = function () { waConectar.hidden = true; llamarWa("/prueba/whatsapp-conectar"); };
   document.getElementById("fin").onclick = function () { pausa = false; verPausa(); añadir("info", "✅ El asistente vuelve a atender (como escribir #teléfono fin)."); };
 
   document.getElementById("foto").addEventListener("change", function () {
