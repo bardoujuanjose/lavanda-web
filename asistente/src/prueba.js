@@ -69,9 +69,11 @@ export async function atenderPrueba(request, env) {
   if (!env.PRUEBA_CLAVE) return json({ error: "Falta configurar el secreto PRUEBA_CLAVE en Cloudflare." }, 503);
   if (!claveCorrecta(env, request.headers.get("X-Clave"))) return json({ error: "Contraseña incorrecta." }, 401);
 
-  if (pathname === "/prueba/whatsapp-estado") return json(await estadoConexion(env));
-  if (pathname === "/prueba/whatsapp-conectar") {
-    try { return json(await conectarApp(env)); } catch (e) { return json({ ok: false, error: e.message }, 502); }
+  if (pathname === "/prueba/whatsapp-estado" || pathname === "/prueba/whatsapp-conectar") {
+    const datos = await request.json().catch(() => ({}));
+    const waba = /^\d{6,25}$/.test(String(datos.waba || "")) ? String(datos.waba) : undefined;
+    if (pathname === "/prueba/whatsapp-estado") return json(await estadoConexion(env, fetch, waba));
+    try { return json(await conectarApp(env, fetch, waba)); } catch (e) { return json({ ok: false, error: e.message, pedirWaba: true }, 502); }
   }
 
   let body;
@@ -191,6 +193,11 @@ const PAGINA = `<!doctype html>
   <div class="caja">
     <b>Conexión con WhatsApp</b>
     <div id="waInfo">Comprobando…</div>
+    <div id="waManual" hidden style="margin:8px 0">
+      <label for="wabaId" style="font-size:.9rem">Identificador de la cuenta de WhatsApp:</label>
+      <input id="wabaId" inputmode="numeric" value="1781568759662157" style="width:100%;padding:9px;border:1px solid #ccd;border-radius:8px;font-size:1rem;margin-top:4px">
+      <button id="waProbar" type="button" style="margin-top:8px">Comprobar con este identificador</button>
+    </div>
     <div class="botones">
       <button id="waConectar" type="button" hidden>Conectar mi app a WhatsApp</button>
       <button id="waCerrar" type="button">Cerrar</button>
@@ -256,16 +263,20 @@ const PAGINA = `<!doctype html>
     if (d.error) h += linea(false, esc(d.error));
     waInfo.innerHTML = h || "Sin datos.";
     waConectar.hidden = !(d.waba && !d.miAppConectada);
+    if (d.waba) wabaElegida = d.waba;
+    document.getElementById("waManual").hidden = !d.pedirWaba;
   }
+  var wabaElegida = "";
   function llamarWa(ruta) {
     waInfo.textContent = "Un momento…";
-    return fetch(ruta, { method: "POST", headers: { "X-Clave": clave } })
+    return fetch(ruta, { method: "POST", headers: { "X-Clave": clave, "Content-Type": "application/json" }, body: JSON.stringify({ waba: wabaElegida }) })
       .then(function (r) { return r.json(); }).then(pintarWa)
       .catch(function () { waInfo.textContent = "No se ha podido conectar con el servidor."; });
   }
   document.getElementById("conexion").onclick = function () { panelWa.hidden = false; llamarWa("/prueba/whatsapp-estado"); };
   document.getElementById("waCerrar").onclick = function () { panelWa.hidden = true; };
   waConectar.onclick = function () { waConectar.hidden = true; llamarWa("/prueba/whatsapp-conectar"); };
+  document.getElementById("waProbar").onclick = function () { wabaElegida = document.getElementById("wabaId").value.trim(); llamarWa("/prueba/whatsapp-estado"); };
   document.getElementById("fin").onclick = function () { pausa = false; verPausa(); añadir("info", "✅ El asistente vuelve a atender (como escribir #teléfono fin)."); };
 
   document.getElementById("foto").addEventListener("change", function () {

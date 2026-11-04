@@ -37,3 +37,17 @@ test("avisa si faltan secretos", async () => {
   assert.equal(e.ok, false);
   assert.ok(e.faltan.includes("WHATSAPP_TOKEN"));
 });
+
+test("si el token no indica la cuenta, se puede indicar a mano", async () => {
+  const m = metaFalso();
+  const sinCuentas = async (url, op) => url.includes("/debug_token")
+    ? new Response(JSON.stringify({ data: { is_valid: true, app_id: "MIA", granular_scopes: [] } }), { status: 200 })
+    : m.f(url, op);
+  const e = await estadoConexion(ENV, sinCuentas);
+  assert.equal(e.waba, null);
+  assert.equal(e.pedirWaba, true);
+  const e2 = await estadoConexion(ENV, sinCuentas, "W2");
+  assert.equal(e2.waba, "W2");
+  const e3 = await conectarApp(ENV, sinCuentas, "W2");
+  assert.equal(e3.miAppConectada, true);
+});

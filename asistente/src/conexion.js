@@ -30,16 +30,24 @@ async function cuentasDelToken(env, fetchImpl) {
 }
 
 // Busca la cuenta de WhatsApp que contiene nuestro número
-async function cuentaDelNumero(env, fetchImpl) {
+// (wabaManual: identificador indicado a mano, si la búsqueda automática no la encuentra)
+async function cuentaDelNumero(env, fetchImpl, wabaManual) {
   const { ids, appId, valido } = await cuentasDelToken(env, fetchImpl);
-  for (const id of ids) {
-    const numeros = await graph(env, `${id}/phone_numbers?fields=id,display_phone_number`, {}, fetchImpl).catch(() => ({ data: [] }));
-    if ((numeros.data || []).some((n) => String(n.id) === String(env.WHATSAPP_PHONE_ID))) return { waba: id, appId, valido, cuentas: ids };
+  const candidatas = [...new Set([wabaManual, env.WHATSAPP_WABA_ID, ...ids].filter(Boolean).map(String))];
+  const errores = [];
+  for (const id of candidatas) {
+    try {
+      const numeros = await graph(env, `${id}/phone_numbers?fields=id,display_phone_number`, {}, fetchImpl);
+      if ((numeros.data || []).some((n) => String(n.id) === String(env.WHATSAPP_PHONE_ID))) return { waba: id, appId, valido, cuentas: ids, errores };
+      errores.push(`${id}: el número no está en esta cuenta`);
+    } catch (e) {
+      errores.push(`${id}: ${e.message}`);
+    }
   }
-  return { waba: null, appId, valido, cuentas: ids };
+  return { waba: null, appId, valido, cuentas: ids, errores };
 }
 
-export async function estadoConexion(env, fetchImpl = fetch) {
+export async function estadoConexion(env, fetchImpl = fetch, wabaManual) {
   const faltan = ["WHATSAPP_TOKEN", "WHATSAPP_PHONE_ID", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "OWNER_PHONE"].filter((k) => !env[k]);
   if (faltan.includes("WHATSAPP_TOKEN") || faltan.includes("WHATSAPP_PHONE_ID")) return { ok: false, faltan };
 
@@ -50,9 +58,10 @@ export async function estadoConexion(env, fetchImpl = fetch) {
     return { ok: false, faltan, error: "No se puede leer el número con el token: " + e.message };
   }
   try {
-    const c = await cuentaDelNumero(env, fetchImpl);
+    const c = await cuentaDelNumero(env, fetchImpl, wabaManual);
     res.waba = c.waba;
     res.appId = c.appId;
+    res.cuentasToken = c.cuentas;
     if (c.waba) {
       const subs = await graph(env, `${c.waba}/subscribed_apps`, {}, fetchImpl);
       res.apps = (subs.data || []).map((a) => ({
@@ -61,7 +70,8 @@ export async function estadoConexion(env, fetchImpl = fetch) {
       }));
       res.miAppConectada = Boolean(c.appId && res.apps.some((a) => a.id === c.appId));
     } else {
-      res.error = "El token no da acceso a la cuenta de WhatsApp de este número (revisa 'Asignar activos' del usuario del sistema).";
+      res.error = "No encuentro la cuenta de WhatsApp de este número." + (c.errores.length ? " Detalle: " + c.errores.join(" · ") : " El token no indica ninguna cuenta.");
+      res.pedirWaba = true;
     }
   } catch (e) {
     res.error = "No se pudo comprobar la cuenta de WhatsApp: " + e.message;
@@ -69,9 +79,9 @@ export async function estadoConexion(env, fetchImpl = fetch) {
   return res;
 }
 
-export async function conectarApp(env, fetchImpl = fetch) {
-  const c = await cuentaDelNumero(env, fetchImpl);
-  if (!c.waba) throw new Error("El token no da acceso a la cuenta de WhatsApp de este número.");
+export async function conectarApp(env, fetchImpl = fetch, wabaManual) {
+  const c = await cuentaDelNumero(env, fetchImpl, wabaManual);
+  if (!c.waba) throw new Error("No encuentro la cuenta de WhatsApp de este número. " + c.errores.join(" · "));
   await graph(env, `${c.waba}/subscribed_apps`, { method: "POST" }, fetchImpl);
-  return estadoConexion(env, fetchImpl);
+  return estadoConexion(env, fetchImpl, c.waba);
 }
