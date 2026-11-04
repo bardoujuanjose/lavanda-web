@@ -38,14 +38,14 @@ test("una llamada nueva conecta con el asistente (voz de mujer, español)", asyn
 test("al pasar la llamada suena en el móvil del dueño, y si no contesta se le avisa", async () => {
   const r = await atenderVoz(peticion("https://x.dev/voz/fin", { CallSid: "CA1", From: "+34612345678", To: "+34977000000", HandoffData: JSON.stringify({ accion: "pasar", resumen: "Puerta 3 no abre" }) }), ENV);
   const t = await r.text();
-  assert.match(t, /Te paso con un compañero/);
+  assert.match(t, /<Play>https:\/\/x.dev\/audio\/pasar.mp3<\/Play>/);
   assert.match(t, /<Dial timeout="25" callerId="\+34612345678"/);
   assert.match(t, /<Number>\+34600111222<\/Number>/);
   const sin = await (await atenderVoz(peticion("https://x.dev/voz/fin", { CallSid: "CA1", From: "+34612345678" }), ENV)).text();
   assert.match(sin, /<Hangup\/>/);
   const tareas = [];
   const r2 = await atenderVoz(peticion("https://x.dev/voz/tras-dial?r=Puerta", { DialCallStatus: "no-answer", From: "+34612345678" }), { ...ENV, WHATSAPP_TOKEN: "" }, { waitUntil: (p) => tareas.push(p) });
-  assert.match(await r2.text(), /Escríbenos por WhatsApp/);
+  assert.match(await r2.text(), /<Play>https:\/\/x.dev\/audio\/no-contesta.mp3<\/Play>/);
   assert.equal(tareas.length, 1);
 });
 

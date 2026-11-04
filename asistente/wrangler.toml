@@ -45,3 +45,7 @@ OWNER_TEMPLATE_LANG = "es"
 #   WHATSAPP_APP_SECRET    "App secret" de la app de Meta
 #   WHATSAPP_VERIFY_TOKEN  palabra secreta que inventas para conectar Meta
 #   OWNER_PHONE            tu móvil personal (donde recibes los avisos)
+
+# Archivos públicos (frases grabadas con la voz del asistente), en https://…/audio/…
+[assets]
+directory = "./publico"

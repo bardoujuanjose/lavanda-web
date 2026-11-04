@@ -71,6 +71,15 @@ const twiml = (cuerpo) =>
   new Response(`<?xml version="1.0" encoding="UTF-8"?><Response>${cuerpo}</Response>`, {
     headers: { "Content-Type": "text/xml; charset=utf-8" },
   });
+// Frases grabadas con la voz del asistente (archivos en publico/audio/). Si no hay grabación, se lee con <Say>.
+const GRABACIONES = { pasar: "/audio/pasar.mp3", noContesta: "/audio/no-contesta.mp3" };
+function frase(clave, texto, env, url) {
+  const ruta = GRABACIONES[clave];
+  if (!ruta) return decir(texto, env);
+  const u = new URL(ruta, url);
+  u.protocol = "https:";
+  return `<Play>${xml(u.toString())}</Play>`;
+}
 const decir = (t, env) => `<Say language="es-ES" voice="${xml(env.VOZ_SAY || "Polly.Lucia-Neural")}">${xml(t)}</Say>`;
 
 // URL pública tal como la ve Twilio (para comprobar la firma)
@@ -150,13 +159,13 @@ export async function atenderVoz(request, env, ctx) {
       tras.protocol = "https:";
       tras.search = new URLSearchParams({ r: String(datos.resumen || "").slice(0, 300) }).toString();
       return twiml(
-        decir("Te paso con un compañero, un momento por favor.", env) +
+        frase("pasar", "Te paso con un compañero, un momento por favor.", env, url) +
         `<Dial timeout="25" callerId="${xml(idCallerId)}" action="${xml(tras.toString())}"><Number>+${xml(dueno)}</Number></Dial>`,
       );
     }
     if (p.ErrorCode || p.SessionStatus === "failed") {
       console.error("Voz: la sesión de ConversationRelay falló:", p.ErrorCode, p.ErrorMessage);
-      return twiml(decir(NO_CONTESTA, env) + "<Hangup/>");
+      return twiml(frase("noContesta", NO_CONTESTA, env, url) + "<Hangup/>");
     }
     return twiml("<Hangup/>");
   }
@@ -171,7 +180,7 @@ export async function atenderVoz(request, env, ctx) {
         motivo: "llamada_perdida", resumen: resumen || "Llamada que el asistente intentó pasarte.", maquina: "", importe: "", telefonoCliente: p.From,
       }).catch((e) => console.error("Voz: no se pudo avisar de la llamada perdida:", e.message)),
     );
-    return twiml(decir(NO_CONTESTA, env) + "<Hangup/>");
+    return twiml(frase("noContesta", NO_CONTESTA, env, url) + "<Hangup/>");
   }
 
   return new Response("No encontrado", { status: 404 });
