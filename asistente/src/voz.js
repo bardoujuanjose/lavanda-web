@@ -194,6 +194,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
   let llamante = "";
   let actual = null;   // respuesta en curso (para cortarla si el cliente interrumpe)
   let terminada = false;
+  let precarga = null;   // promesa de la precarga de la caché
 
   function sistema() {
     const ult3 = llamante.slice(-3).split("").join(" ");
@@ -206,6 +207,27 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
 
   // La memoria (historial) guarda solo texto, igual que en WhatsApp. Dentro de un turno,
   // las llamadas a herramientas van en una lista aparte que solo crece (sin modificar nada).
+  const modelo = env.VOZ_MODELO || MODELO_VOZ;
+  const ajustes = {
+    model: modelo,
+    // Sonnet 5.5: "between_tools" = sin razonamiento previo (lo más rápido). Otros modelos: adaptativo.
+    ...(modelo === "claude-sonnet-5-5" ? { thinking: { type: "between_tools" } } : {}),
+    output_config: { effort: "low" },
+    system: [{ type: "text", text: INSTRUCCIONES_VOZ, cache_control: { type: "ephemeral" } }],
+    tools: [HERRAMIENTA_AVISO, HERRAMIENTA_PASAR_LLAMADA],
+  };
+
+  // Precarga: Claude "lee" las normas mientras suena el saludo (max_tokens 0 = solo escribe la caché)
+  async function precargar() {
+    const t0 = ahora();
+    try {
+      const r = await claude.beta.messages.create({ ...ajustes, max_tokens: 0, messages: [{ role: "user", content: "precarga" }] });
+      console.log(`Voz [precarga] ${ahora() - t0} ms · caché escrita ${r.usage?.cache_creation_input_tokens ?? "?"} · leída ${r.usage?.cache_read_input_tokens ?? "?"}`);
+    } catch (e) {
+      console.error("Voz: la precarga falló:", e?.message || e);
+    }
+  }
+
   async function responder() {
     const mensajes = [...historial, { role: "system", content: sistema() }];
     let textoTurno = "";
@@ -216,17 +238,11 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
     for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
       const control = { cortada: false, stream: null, dicho: "", previo: textoTurno, inicio: ahora(), primera: 0 };
       actual = control;
-      const modelo = env.VOZ_MODELO || MODELO_VOZ;
       const stream = claude.beta.messages.stream({
-        model: modelo,
+        ...ajustes,
         max_tokens: 1500,
-        // Sonnet 5.5: "between_tools" = sin razonamiento previo (lo más rápido). Otros modelos: adaptativo.
-        ...(modelo === "claude-sonnet-5-5" ? { thinking: { type: "between_tools" } } : {}),
-        output_config: { effort: "low" },
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",
-        system: [{ type: "text", text: INSTRUCCIONES_VOZ, cache_control: { type: "ephemeral" } }],
-        tools: [HERRAMIENTA_AVISO, HERRAMIENTA_PASAR_LLAMADA],
         messages: mensajes,
       });
       control.stream = stream;
@@ -246,7 +262,10 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
       if (control.cortada) return;
       actual = null;
       enviar({ type: "text", token: "", last: true });
-      if (control.dicho) console.log(`Voz [asistente] (${control.primera} ms hasta la primera palabra, ${ahora() - control.inicio} ms en total): ${control.dicho}`);
+      if (control.dicho) {
+        const u = msg.usage || {};
+        console.log(`Voz [asistente] (${control.primera} ms hasta la primera palabra, ${ahora() - control.inicio} ms en total · caché leída ${u.cache_read_input_tokens ?? "?"}, escrita ${u.cache_creation_input_tokens ?? "?"}, sin caché ${u.input_tokens ?? "?"}): ${control.dicho}`);
+      }
       textoTurno += (textoTurno && control.dicho ? " " : "") + control.dicho;
 
       if (msg.stop_reason === "refusal") {
@@ -308,6 +327,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
 
       if (m.type === "setup") {
         llamante = normalizarTelefono(m.from || "");
+        precarga = precargar();
         return;
       }
       if (m.type === "interrupt") {

@@ -70,7 +70,11 @@ function streamFalso(respuesta) {
 }
 function claudeFalso(respuestas) {
   const peticiones = [];
-  return { peticiones, beta: { messages: { stream: (p) => { peticiones.push(structuredClone(p)); return streamFalso(respuestas.shift()); } } } };
+  const precargas = [];
+  return { peticiones, precargas, beta: { messages: {
+    stream: (p) => { peticiones.push(structuredClone(p)); return streamFalso(respuestas.shift()); },
+    create: async (p) => { precargas.push(structuredClone(p)); return { content: [], stop_reason: "max_tokens", usage: { cache_creation_input_tokens: 7000 } }; },
+  } } };
 }
 const texto = (t) => ({ stop_reason: "end_turn", content: [{ type: "text", text: t }] });
 
@@ -164,4 +168,16 @@ test("las llamadas usan Sonnet 5.5 sin razonamiento previo", async () => {
   assert.deepEqual(p.thinking, { type: "between_tools" });
   assert.equal(p.output_config.effort, "low");
   assert.equal(p.fallbacks, "default");
+});
+
+test("al empezar la llamada precarga las normas con los mismos ajustes que las respuestas", async () => {
+  const claude = claudeFalso([texto("Seis euros.")]);
+  const s = crearSesion({ env: ENV, claude, wa: {}, enviar: () => {} });
+  await s.recibir(JSON.stringify({ type: "setup", from: "+34612345678" }));
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "precio", last: true }));
+  const pre = claude.precargas[0];
+  const real = claude.peticiones[0];
+  assert.equal(pre.max_tokens, 0);
+  assert.equal(pre.stream, undefined);
+  for (const k of ["model", "thinking", "output_config", "system", "tools"]) assert.deepEqual(pre[k], real[k], k);
 });
