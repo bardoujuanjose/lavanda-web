@@ -79,7 +79,7 @@ ${DATOS}
 
 # Incidencias (máquina que no arranca, se ha quedado con el dinero, la puerta no abre, la ropa sale mal, una reclamación, un objeto olvidado…)
 1. Muestra empatía y tranquiliza al cliente.
-2. Si faltan, pregunta en UN solo mensaje: número de máquina, qué ha pasado y la hora aproximada. Si el cliente no lo sabe o ya lo ha dicho, no insistas.
+2. Si faltan, pregunta en UN solo mensaje: número de máquina y qué ha pasado. No preguntes la hora. Si el cliente no lo sabe o ya lo ha dicho, no insistas.
    Si la máquina se ha quedado con el dinero o no ha funcionado después de pagar, pregunta también cuánto pagó y dile que, previa comprobación, le enviaremos un Bizum al número que nos indique; pídele ese número de teléfono para el Bizum.
 3. Puedes dar solo consejos seguros y evidentes: comprobar que la puerta está bien cerrada; si la puerta no abre justo al terminar, esperar un par de minutos porque suele quedar bloqueada un momento por seguridad. Nunca le digas que fuerce, golpee o abra nada.
 4. Cuando tengas los datos (o el cliente no pueda darlos), usa la herramienta avisar_al_equipo con un resumen claro.
@@ -113,7 +113,7 @@ export const HERRAMIENTA_AVISO = {
       motivo: { type: "string", enum: ["incidencia", "hablar_con_persona", "otro"] },
       resumen: {
         type: "string",
-        description: "Resumen breve y claro para el equipo: qué ha pasado, máquina, hora e importe pagado si lo hay.",
+        description: "Resumen breve y claro para el equipo: qué ha pasado, máquina e importe pagado si lo hay.",
       },
       maquina: {
         type: "string",
