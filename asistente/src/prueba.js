@@ -9,6 +9,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { procesarPendientes, aplicarResultado, RESPUESTA_ERROR } from "./asistente-whatsapp.js";
 import { normalizarTelefono } from "./whatsapp.js";
 import { estadoConexion, conectarApp, activarMensajes } from "./conexion.js";
+import { estadoTwilio } from "./twilio.js";
 
 const CLIENTE = "34600000001";
 const MAX_FOTO_BASE64 = 6_000_000;
@@ -63,12 +64,15 @@ export async function atenderPrueba(request, env) {
   if (pathname === "/prueba" && request.method === "GET") {
     return new Response(PAGINA, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
   }
-  const rutas = ["/prueba/mensaje", "/prueba/whatsapp-estado", "/prueba/whatsapp-conectar", "/prueba/whatsapp-mensajes"];
+  const rutas = ["/prueba/mensaje", "/prueba/whatsapp-estado", "/prueba/whatsapp-conectar", "/prueba/whatsapp-mensajes", "/prueba/twilio-estado"];
   if (!rutas.includes(pathname) || request.method !== "POST") return json({ error: "No encontrado" }, 404);
 
   if (!env.PRUEBA_CLAVE) return json({ error: "Falta configurar el secreto PRUEBA_CLAVE en Cloudflare." }, 503);
   if (!claveCorrecta(env, request.headers.get("X-Clave"))) return json({ error: "Contraseña incorrecta." }, 401);
 
+  if (pathname === "/prueba/twilio-estado") {
+    try { return json(await estadoTwilio(env)); } catch (e) { return json({ ok: false, faltan: [], error: e.message }, 502); }
+  }
   if (pathname === "/prueba/whatsapp-mensajes") {
     const datos = await request.json().catch(() => ({}));
     const waba = /^\d{6,25}$/.test(String(datos.waba || "")) ? String(datos.waba) : undefined;
@@ -187,6 +191,7 @@ const PAGINA = `<!doctype html>
 <body>
 <header>
   <div class="t"><b>Lavanda · prueba del asistente</b><small>Escribe como si fueras un cliente</small></div>
+  <button id="twilio" type="button">Twilio</button>
   <button id="conexion" type="button">WhatsApp</button>
   <button id="nuevo" type="button">Empezar de cero</button>
 </header>
@@ -292,7 +297,28 @@ const PAGINA = `<!doctype html>
       .then(function (r) { return r.json(); }).then(pintarWa)
       .catch(function () { waInfo.textContent = "No se ha podido conectar con el servidor."; });
   }
-  document.getElementById("conexion").onclick = function () { panelWa.hidden = false; llamarWa("/prueba/whatsapp-estado"); };
+  document.getElementById("twilio").onclick = function () {
+    panelWa.hidden = false; waConectar.hidden = true; document.getElementById("waMensajes").hidden = true; document.getElementById("waManual").hidden = true;
+    panelWa.querySelector(".caja > b").textContent = "Twilio";
+    waInfo.textContent = "Un momento…";
+    fetch("/prueba/twilio-estado", { method: "POST", headers: { "X-Clave": clave } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var h = "";
+        if (d.faltan && d.faltan.length) h += linea(false, "Faltan secretos en Cloudflare: " + esc(d.faltan.join(", ")));
+        if (d.error) h += linea(false, esc(d.error));
+        (d.numeros || []).forEach(function (n) {
+          h += "<div style='margin-top:10px;padding:10px;border:1px solid #e3e6e8;border-radius:8px'>" +
+            "<b>" + esc(n.numero) + "</b> · " + esc(n.nombre) + "<br>Funciones: " + esc(n.capacidades.join(", ")) +
+            "<br>Llamadas entrantes van a: " + esc(n.voz) + (n.metodoVoz ? " (" + esc(n.metodoVoz) + ")" : "") + "</div>";
+        });
+        if (d.ok && !(d.numeros || []).length) h += linea(false, "No hay números en esta cuenta de Twilio.");
+        waInfo.innerHTML = h || "Sin datos.";
+      })
+      .catch(function () { waInfo.textContent = "No se ha podido conectar con el servidor."; });
+  };
+  document.getElementById("conexion").onclick = function () {
+    panelWa.querySelector(".caja > b").textContent = "Conexión con WhatsApp"; panelWa.hidden = false; llamarWa("/prueba/whatsapp-estado"); };
   document.getElementById("waCerrar").onclick = function () { panelWa.hidden = true; };
   waConectar.onclick = function () { waConectar.hidden = true; llamarWa("/prueba/whatsapp-conectar"); };
   document.getElementById("waMensajes").onclick = function () { this.hidden = true; llamarWa("/prueba/whatsapp-mensajes"); };
