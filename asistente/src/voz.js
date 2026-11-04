@@ -20,6 +20,17 @@ import { avisarDueno, claveAviso } from "./asistente-whatsapp.js";
 const MODELO_VOZ = "claude-sonnet-5-5";
 
 const MAX_TURNOS = 40;
+
+// Voces que se pueden probar desde el chat de pruebas ("proveedor|voz"; voz vacía = la del proveedor por defecto)
+export const VOCES_PRUEBA = [
+  "Amazon|Lucia-Neural",
+  "Amazon|Lucia-Generative",
+  "Google|es-ES-Chirp3-HD-Aoede",
+  "Google|es-ES-Chirp3-HD-Kore",
+  "Google|es-ES-Chirp3-HD-Leda",
+  "Google|es-ES-Chirp3-HD-Zephyr",
+  "ElevenLabs|",
+];
 const MAX_VUELTAS = 3;
 const NO_CONTESTA =
   "Ahora mismo no podemos atenderte. Escríbenos por WhatsApp a este mismo número, el 689 810 213, y te ayudamos. Gracias por llamar a Lavanda.";
@@ -110,6 +121,13 @@ export async function atenderVoz(request, env, ctx) {
       ttsProvider: env.VOZ_TTS_PROVIDER || "Amazon",
       voice: env.VOZ_VOZ || "Lucia-Neural",
     };
+    // En las llamadas de prueba desde el navegador se puede elegir otra voz para compararlas
+    if (String(p.From || "").startsWith("client:") && VOCES_PRUEBA.includes(p.VozPrueba)) {
+      const [proveedor, voz] = p.VozPrueba.split("|");
+      atributos.ttsProvider = proveedor;
+      if (voz) atributos.voice = voz; else delete atributos.voice;
+      console.log(`Voz [prueba]: probando la voz ${p.VozPrueba}`);
+    }
     if (env.VOZ_STT_PROVIDER) atributos.transcriptionProvider = env.VOZ_STT_PROVIDER;
     const attr = Object.entries(atributos).map(([k, v]) => `${k}="${xml(v)}"`).join(" ");
     return twiml(`<Connect action="${xml(fin.toString())}"><ConversationRelay ${attr}/></Connect>`);

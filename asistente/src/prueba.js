@@ -223,6 +223,17 @@ const PAGINA = `<!doctype html>
   <div class="caja" style="text-align:center">
     <b>Llamada de prueba al asistente</b>
     <div id="llamadaEstado" style="margin:14px 0;font-size:1.05rem">Preparando…</div>
+    <label for="vozPrueba" style="font-size:.9rem">Voz para esta llamada:</label>
+    <select id="vozPrueba" style="width:100%;padding:9px;margin:6px 0 12px;border:1px solid #ccd;border-radius:8px;font-size:1rem">
+      <option value="">Actual (Amazon Lucía)</option>
+      <option value="Amazon|Lucia-Generative">Amazon · Lucía generativa</option>
+      <option value="Google|es-ES-Chirp3-HD-Aoede">Google · Aoede</option>
+      <option value="Google|es-ES-Chirp3-HD-Kore">Google · Kore</option>
+      <option value="Google|es-ES-Chirp3-HD-Leda">Google · Leda</option>
+      <option value="Google|es-ES-Chirp3-HD-Zephyr">Google · Zephyr</option>
+      <option value="ElevenLabs|">ElevenLabs · voz por defecto</option>
+    </select>
+    <button id="empezarLlamada" type="button" style="background:#075e54;color:#fff;border:0;border-radius:24px;padding:12px 26px;font:inherit;font-weight:700;cursor:pointer;margin-bottom:10px">Llamar</button>
     <p style="font-size:.85rem;color:#667781;margin:0 0 12px">Habla con el micrófono del ordenador como si fueras un cliente. Cuesta unos céntimos por minuto. Los avisos de Bizum sí te llegarán al móvil.</p>
     <button id="colgar" type="button" style="background:#d32f2f;color:#fff;border:0;border-radius:24px;padding:12px 26px;font:inherit;font-weight:700;cursor:pointer">Colgar</button>
   </div>
@@ -339,7 +350,10 @@ const PAGINA = `<!doctype html>
     llamada = null;
   }
   document.getElementById("llamar").onclick = function () {
-    panelLl.hidden = false; estadoLl.textContent = "Preparando…"; document.getElementById("colgar").textContent = "Colgar";
+    panelLl.hidden = false; estadoLl.textContent = "Elige la voz y pulsa Llamar"; document.getElementById("colgar").textContent = "Cerrar";
+  };
+  document.getElementById("empezarLlamada").onclick = function () {
+    estadoLl.textContent = "Preparando…"; document.getElementById("colgar").textContent = "Colgar";
     fetch("/prueba/llamada-token", { method: "POST", headers: { "X-Clave": clave } })
       .then(function (r) { return r.json(); })
       .then(function (d) {
@@ -349,7 +363,11 @@ const PAGINA = `<!doctype html>
           dispositivo = new window.Twilio.Device(d.token, { codecPreferences: ["opus", "pcmu"], logLevel: "warn" });
           estadoLl.textContent = "Llamando… (permite el micrófono si el navegador lo pide)";
           var tel = (document.getElementById("telPrueba").value || "").replace(/\D/g, "");
-          return dispositivo.connect(tel ? { params: { TelefonoPrueba: tel } } : {});
+          var voz = document.getElementById("vozPrueba").value;
+          var params = {};
+          if (tel) params.TelefonoPrueba = tel;
+          if (voz) params.VozPrueba = voz;
+          return dispositivo.connect({ params: params });
         });
       })
       .then(function (c) {

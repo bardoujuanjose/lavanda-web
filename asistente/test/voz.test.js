@@ -196,3 +196,14 @@ test("la llamada de prueba puede simular el número del cliente", async () => {
   await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "hola", last: true }));
   assert.match(claude.peticiones[0].messages.at(-1).content, /llama desde el \+34612345678/);
 });
+
+test("en las llamadas de prueba se puede elegir otra voz, solo de la lista", async () => {
+  const t = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA7", From: "client:prueba-lavanda", VozPrueba: "Google|es-ES-Chirp3-HD-Aoede" }), ENV)).text();
+  assert.match(t, /ttsProvider="Google"/);
+  assert.match(t, /voice="es-ES-Chirp3-HD-Aoede"/);
+  const t2 = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA8", From: "client:prueba-lavanda", VozPrueba: "ElevenLabs|" }), ENV)).text();
+  assert.match(t2, /ttsProvider="ElevenLabs"/);
+  assert.doesNotMatch(t2, /voice=/);
+  const t3 = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA6", From: "+34612345678", VozPrueba: "Google|es-ES-Chirp3-HD-Aoede" }), ENV)).text();
+  assert.match(t3, /ttsProvider="Amazon"/);
+});
