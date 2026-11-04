@@ -27,6 +27,8 @@ binding = "AI"
 # Ajustes no secretos
 [vars]
 GRAPH_VERSION = "v23.0"
+# Cuenta de WhatsApp Business de Lavanda (no es secreto)
+WHATSAPP_WABA_ID = "1781568759662157"
 OWNER_TEMPLATE = "aviso_lavanda"
 OWNER_TEMPLATE_LANG = "es"
 
