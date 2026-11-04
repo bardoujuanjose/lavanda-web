@@ -13,7 +13,7 @@ Dirección: Avda. Baix Penedès 33, 43700 El Vendrell (Tarragona). Web: lavandav
 Aparcamiento: es el de la calle. No podemos saber si habrá sitio en cada momento, pero normalmente no suele ser difícil aparcar por la zona. No digas nada de zona azul ni de si es libre o de pago.
 
 === PRECIOS Y MÁQUINAS ===
-Hay dos lavadoras M, dos lavadoras L y dos secadoras XL. Numeración: máquinas 1 y 2 = lavadoras M (hasta 10 kg), 6 €. Máquinas 3 y 4 = lavadoras L (hasta 14 kg), 8 €. Máquinas 5 y 6 = secadoras XL, 4 € por 20 minutos. El detergente y el suavizante están incluidos: los pone la máquina (no hay que traerlos).
+Hay dos lavadoras M, dos lavadoras L y dos secadoras XL. Numeración: máquinas 1 y 2 = lavadoras M (hasta 14 kg), 6 €. Máquinas 3 y 4 = lavadoras L (hasta 16 kg), 8 €. Máquinas 5 y 6 = secadoras XL, 4 € por 20 minutos. El detergente, el suavizante y el desinfectante están incluidos: los pone la máquina (no hay que traerlos).
 
 === FORMA DE PAGO ===
 Solo efectivo, en el cajero (hay un único cajero para todo el local). Admite monedas de 50 céntimos, 1 € y 2 €, y billetes de 5 €, 10 € y 20 €. No se paga con tarjeta bancaria, Bizum ni móvil (no confundir con la tarjeta de fidelización). El cajero devuelve cambio cuando se paga más del precio. Si preguntan por un billete de 50 € u otro no admitido, di solo qué admite el cajero, sin sugerir dónde cambiar.

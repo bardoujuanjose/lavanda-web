@@ -230,6 +230,29 @@ a:focus-visible { outline: 3px solid var(--verde); outline-offset: 3px; }
 @keyframes bubble { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.15); } }
 .cash { margin: 14px 0 0; text-align: center; font-weight: 600; }
 
+/* Tarjeta de fidelización */
+.fidelidad {
+  display: flex; align-items: center; gap: 18px;
+  margin-top: 22px; padding: 18px;
+  background: #fff; border: 2px solid var(--borde); border-radius: var(--radio);
+  box-shadow: 0 10px 22px rgba(83, 33, 125, .08);
+}
+.fidelidad h3 { font-size: 1.3rem; color: var(--indigo); margin-bottom: 4px; }
+.fidelidad p { margin: 4px 0 0; }
+.fidelidad-pide { font-size: .95rem; color: var(--tinta-suave); }
+.fidelidad-pide a { color: var(--morado); font-weight: 800; }
+.tarjeta {
+  position: relative; flex-shrink: 0;
+  width: 112px; height: 72px; border-radius: 10px;
+  background: var(--grad); color: #fff;
+  box-shadow: 0 8px 16px rgba(83, 33, 125, .3);
+  transform: rotate(-6deg);
+}
+.tarjeta-logo { position: absolute; left: 10px; top: 8px; font-family: var(--titulos); font-weight: 700; font-size: .75rem; letter-spacing: .08em; }
+.tarjeta-chip { position: absolute; left: 10px; top: 30px; width: 20px; height: 15px; border-radius: 3px; background: #f3d36b; }
+.tarjeta-dto { position: absolute; right: 8px; bottom: 6px; font-family: var(--titulos); font-weight: 700; font-size: 1.35rem; }
+@media (max-width: 420px) { .fidelidad { flex-direction: column; text-align: center; } }
+
 /* =========================================================
    PASOS: línea de tiempo con burbujas
    ========================================================= */
