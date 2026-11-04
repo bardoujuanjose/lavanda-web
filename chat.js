@@ -12,7 +12,7 @@
   var WHATSAPP = "34689810213";
   var MAX_HISTORIAL = 19;          // el servidor admite 20 mensajes como máximo
   var CLAVE = "lavanda-chat";
-  var SALUDO = "¡Hola! Soy el asistente de Lavanda 💜 Pregúntame por precios, horario, cómo funcionan las máquinas o cuéntame si has tenido algún problema.";
+  var SALUDO = "¡Hola! Soy el asistente de Lavanda 💜 Pregúntame por precios, horario o cómo funcionan las máquinas. Si tienes algún problema, te paso con el equipo por WhatsApp.";
   var SUGERENCIAS = ["¿Cuánto cuesta lavar?", "¿Cómo funciona?", "¿Qué no puedo lavar?", "Tengo un problema con una máquina"];
 
   var historial = cargar();
