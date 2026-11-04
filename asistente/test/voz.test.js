@@ -126,3 +126,10 @@ test("si el cliente interrumpe, se corta la respuesta", async () => {
   assert.ok(!enviados.some((e) => e.last === true));
   assert.match(s.historial.at(-1).content, /Hola, la \[interrumpido\]/);
 });
+
+test("en la prueba desde el navegador no intenta pasar la llamada", async () => {
+  const r = await atenderVoz(peticion("https://x.dev/voz/fin", { CallSid: "CA1", From: "client:prueba-lavanda", HandoffData: JSON.stringify({ accion: "pasar", resumen: "x" }) }), ENV);
+  const t = await r.text();
+  assert.match(t, /Aquí te pasaría con un compañero/);
+  assert.doesNotMatch(t, /<Dial/);
+});

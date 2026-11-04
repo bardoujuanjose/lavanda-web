@@ -43,3 +43,39 @@ test("muestra precios, tipo de cuenta y requisitos", async () => {
   assert.deepEqual(r.preciosLlamada.lista, [{ tipo: "local", precio: "0.01" }]);
   assert.deepEqual(r.requisitos[0].documentos, ["Proof of address"]);
 });
+
+import { tokenNavegador, prepararLlamadaNavegador } from "../src/twilio.js";
+import { createHmac } from "node:crypto";
+
+test("el pase del navegador es un JWT de Twilio bien firmado", async () => {
+  const t = await tokenNavegador("SK1", "secreto", "AC1", "AP1", 1000);
+  const [c, d, f] = t.split(".");
+  const dec = (x) => JSON.parse(Buffer.from(x, "base64url").toString());
+  assert.equal(dec(c).cty, "twilio-fpa;v=1");
+  assert.equal(dec(d).iss, "SK1");
+  assert.equal(dec(d).sub, "AC1");
+  assert.equal(dec(d).exp, 4600);
+  assert.equal(dec(d).grants.voice.outgoing.application_sid, "AP1");
+  assert.equal(f, createHmac("sha256", "secreto").update(`${c}.${d}`).digest("base64url"));
+});
+
+test("crea la app y la clave una sola vez y las reutiliza", async () => {
+  const guardado = {};
+  const almacen = { leer: async (k) => guardado[k] ?? null, guardar: async (k, v) => { guardado[k] = v; } };
+  const llamadas = [];
+  const f = async (url, op) => {
+    llamadas.push(`${op.method} ${url.split("/AC1/")[1]}`);
+    const ok = (d) => new Response(JSON.stringify(d), { status: 200 });
+    if (url.includes("Applications.json?")) return ok({ applications: [] });
+    if (url.endsWith("Applications.json")) return ok({ sid: "AP9" });
+    if (url.endsWith("Keys.json")) return ok({ sid: "SK9", secret: "sec" });
+    return ok({});
+  };
+  const env = { TWILIO_ACCOUNT_SID: "AC1", TWILIO_AUTH_TOKEN: "t" };
+  await prepararLlamadaNavegador(env, almacen, "https://x/voz", f);
+  assert.equal(guardado.twilioAppSid, "AP9");
+  assert.deepEqual(guardado.twilioApiKey, { sid: "SK9", secret: "sec" });
+  const antes = llamadas.length;
+  await prepararLlamadaNavegador(env, almacen, "https://x/voz", f);
+  assert.deepEqual(llamadas.slice(antes), ["POST Applications/AP9.json"]);
+});

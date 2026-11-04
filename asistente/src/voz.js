@@ -115,13 +115,18 @@ export async function atenderVoz(request, env, ctx) {
     let datos = {};
     try { datos = JSON.parse(p.HandoffData || "{}"); } catch { /* sin datos */ }
     const dueno = normalizarTelefono(env.OWNER_PHONE);
+    const idCallerId = /^\+\d{6,}$/.test(p.From || "") ? p.From : /^\+\d{6,}$/.test(p.To || "") ? p.To : "";
+    if (datos.accion === "pasar" && dueno && !idCallerId) {
+      // Llamada de prueba desde el navegador: no hay número desde el que pasarla
+      return twiml(decir("Aquí te pasaría con un compañero. En una llamada real, sonaría en tu móvil. Fin de la prueba.", env) + "<Hangup/>");
+    }
     if (datos.accion === "pasar" && dueno) {
       const tras = new URL("/voz/tras-dial", url);
       tras.protocol = "https:";
       tras.search = new URLSearchParams({ r: String(datos.resumen || "").slice(0, 300) }).toString();
       return twiml(
         decir("Te paso con un compañero, un momento por favor.", env) +
-        `<Dial timeout="25" callerId="${xml(/^\+\d{6,}$/.test(p.From || "") ? p.From : p.To)}" action="${xml(tras.toString())}"><Number>+${xml(dueno)}</Number></Dial>`,
+        `<Dial timeout="25" callerId="${xml(idCallerId)}" action="${xml(tras.toString())}"><Number>+${xml(dueno)}</Number></Dial>`,
       );
     }
     if (p.ErrorCode || p.SessionStatus === "failed") {

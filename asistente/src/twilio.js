@@ -71,3 +71,58 @@ export async function estadoTwilio(env, fetchImpl = fetch) {
   }
   return res;
 }
+
+// ---------------------------------------------------------------------
+//  Llamada de prueba desde el navegador (Twilio Voice SDK)
+//  Crea si hace falta una "TwiML App" que envía la llamada a /voz y una
+//  clave de API, y genera un pase (token) de una hora para el navegador.
+// ---------------------------------------------------------------------
+const NOMBRE_APP = "Lavanda asistente voz (prueba navegador)";
+
+const b64url = (texto) => btoa(String.fromCharCode(...new TextEncoder().encode(texto))).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+export async function tokenNavegador(apiKeySid, apiSecret, accountSid, appSid, ahoraSeg = Math.floor(Date.now() / 1000)) {
+  const cabecera = b64url(JSON.stringify({ typ: "JWT", alg: "HS256", cty: "twilio-fpa;v=1" }));
+  const datos = b64url(JSON.stringify({
+    jti: `${apiKeySid}-${ahoraSeg}`, iss: apiKeySid, sub: accountSid, iat: ahoraSeg, nbf: ahoraSeg, exp: ahoraSeg + 3600,
+    grants: { identity: "prueba-lavanda", voice: { outgoing: { application_sid: appSid }, incoming: { allow: false } } },
+  }));
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(apiSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const firma = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(`${cabecera}.${datos}`)));
+  return `${cabecera}.${datos}.${btoa(String.fromCharCode(...firma)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_")}`;
+}
+
+// almacen: { leer(k), guardar(k, v) }  ·  urlVoz: https://…/voz
+export async function prepararLlamadaNavegador(env, almacen, urlVoz, fetchImpl = fetch) {
+  const base = `${env.TWILIO_BASE || "https://api.twilio.com"}/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}`;
+  const llamar = async (ruta, metodo = "GET", cuerpo) => {
+    const r = await fetchImpl(`${base}/${ruta}`, {
+      method: metodo,
+      headers: { Authorization: auth(env), ...(cuerpo ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) },
+      body: cuerpo ? new URLSearchParams(cuerpo) : undefined,
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d?.message || `Twilio respondió ${r.status}`);
+    return d;
+  };
+
+  // 1) TwiML App que manda la llamada al asistente
+  let appSid = await almacen.leer("twilioAppSid");
+  if (!appSid) {
+    const lista = await llamar(`Applications.json?FriendlyName=${encodeURIComponent(NOMBRE_APP)}`);
+    appSid = lista.applications?.[0]?.sid;
+    if (!appSid) appSid = (await llamar("Applications.json", "POST", { FriendlyName: NOMBRE_APP, VoiceUrl: urlVoz, VoiceMethod: "POST" })).sid;
+    await almacen.guardar("twilioAppSid", appSid);
+  }
+  await llamar(`Applications/${appSid}.json`, "POST", { VoiceUrl: urlVoz, VoiceMethod: "POST" });
+
+  // 2) Clave de API para firmar el pase del navegador
+  let clave = await almacen.leer("twilioApiKey");
+  if (!clave) {
+    const k = await llamar("Keys.json", "POST", { FriendlyName: "Lavanda prueba navegador" });
+    clave = { sid: k.sid, secret: k.secret };
+    await almacen.guardar("twilioApiKey", clave);
+  }
+
+  return tokenNavegador(clave.sid, clave.secret, env.TWILIO_ACCOUNT_SID, appSid);
+}

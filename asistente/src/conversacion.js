@@ -92,6 +92,14 @@ export class Conversacion extends DurableObject {
     }
   }
 
+  // Pequeño almacén de configuración (se usa una instancia aparte llamada "__config__")
+  async leerConfig(clave) {
+    return (await this.ctx.storage.get("config:" + clave)) ?? null;
+  }
+  async guardarConfig(clave, valor) {
+    await this.ctx.storage.put("config:" + clave, valor);
+  }
+
   // El dueño escribe "#telefono texto" o "#telefono fin"
   async dueno(telefono, texto) {
     const resultado = await comandoDueno({

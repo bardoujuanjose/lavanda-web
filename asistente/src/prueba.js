@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { procesarPendientes, aplicarResultado, RESPUESTA_ERROR } from "./asistente-whatsapp.js";
 import { normalizarTelefono } from "./whatsapp.js";
 import { estadoConexion, conectarApp, activarMensajes } from "./conexion.js";
-import { estadoTwilio } from "./twilio.js";
+import { estadoTwilio, prepararLlamadaNavegador } from "./twilio.js";
 
 const CLIENTE = "34600000001";
 const MAX_FOTO_BASE64 = 6_000_000;
@@ -64,12 +64,23 @@ export async function atenderPrueba(request, env) {
   if (pathname === "/prueba" && request.method === "GET") {
     return new Response(PAGINA, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
   }
-  const rutas = ["/prueba/mensaje", "/prueba/whatsapp-estado", "/prueba/whatsapp-conectar", "/prueba/whatsapp-mensajes", "/prueba/twilio-estado"];
+  const rutas = ["/prueba/mensaje", "/prueba/whatsapp-estado", "/prueba/whatsapp-conectar", "/prueba/whatsapp-mensajes", "/prueba/twilio-estado", "/prueba/llamada-token"];
   if (!rutas.includes(pathname) || request.method !== "POST") return json({ error: "No encontrado" }, 404);
 
   if (!env.PRUEBA_CLAVE) return json({ error: "Falta configurar el secreto PRUEBA_CLAVE en Cloudflare." }, 503);
   if (!claveCorrecta(env, request.headers.get("X-Clave"))) return json({ error: "Contraseña incorrecta." }, 401);
 
+  if (pathname === "/prueba/llamada-token") {
+    try {
+      const config = env.CONVERSACIONES.get(env.CONVERSACIONES.idFromName("__config__"));
+      const almacen = { leer: (k) => config.leerConfig(k), guardar: (k, v) => config.guardarConfig(k, v) };
+      const urlVoz = new URL("/voz", request.url).toString();
+      return json({ token: await prepararLlamadaNavegador(env, almacen, urlVoz) });
+    } catch (e) {
+      console.error("Prueba: no se pudo preparar la llamada:", e.message);
+      return json({ error: "No se pudo preparar la llamada: " + e.message }, 502);
+    }
+  }
   if (pathname === "/prueba/twilio-estado") {
     try { return json(await estadoTwilio(env)); } catch (e) { return json({ ok: false, faltan: [], error: e.message }, 502); }
   }
@@ -178,6 +189,9 @@ const PAGINA = `<!doctype html>
   #login button { padding: 12px; font-size: 1rem; border: 0; border-radius: 8px; background: var(--verde); color: #fff; cursor: pointer; }
   #login p { margin: 0; font-size: .9rem; color: var(--gris); }
   #loginError { color: #b3261e !important; }
+  #panelLlamada { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 6; }
+  #panelLlamada[hidden] { display: none; }
+  #panelLlamada .caja { background: #fff; border-radius: 14px; padding: 22px; width: min(400px, 100%); }
   #panelWa { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 5; }
   #panelWa[hidden] { display: none; }
   #panelWa .caja { background: #fff; border-radius: 14px; padding: 18px; width: min(460px, 100%); max-height: 90vh; overflow: auto; }
@@ -191,6 +205,7 @@ const PAGINA = `<!doctype html>
 <body>
 <header>
   <div class="t"><b>Lavanda · prueba del asistente</b><small>Escribe como si fueras un cliente</small></div>
+  <button id="llamar" type="button">📞 Llamar</button>
   <button id="twilio" type="button">Twilio</button>
   <button id="conexion" type="button">WhatsApp</button>
   <button id="nuevo" type="button">Empezar de cero</button>
@@ -204,6 +219,14 @@ const PAGINA = `<!doctype html>
   <textarea id="t" rows="1" placeholder="Escribe un mensaje" aria-label="Mensaje"></textarea>
   <button class="redondo" aria-label="Enviar">➤</button>
 </form>
+<div id="panelLlamada" hidden>
+  <div class="caja" style="text-align:center">
+    <b>Llamada de prueba al asistente</b>
+    <div id="llamadaEstado" style="margin:14px 0;font-size:1.05rem">Preparando…</div>
+    <p style="font-size:.85rem;color:#667781;margin:0 0 12px">Habla con el micrófono del ordenador como si fueras un cliente. Cuesta unos céntimos por minuto. Los avisos de Bizum sí te llegarán al móvil.</p>
+    <button id="colgar" type="button" style="background:#d32f2f;color:#fff;border:0;border-radius:24px;padding:12px 26px;font:inherit;font-weight:700;cursor:pointer">Colgar</button>
+  </div>
+</div>
 <div id="panelWa" hidden>
   <div class="caja">
     <b>Conexión con WhatsApp</b>
@@ -297,6 +320,49 @@ const PAGINA = `<!doctype html>
       .then(function (r) { return r.json(); }).then(pintarWa)
       .catch(function () { waInfo.textContent = "No se ha podido conectar con el servidor."; });
   }
+  // ---- Llamada de prueba desde el navegador ----
+  var dispositivo = null, llamada = null;
+  var panelLl = document.getElementById("panelLlamada"), estadoLl = document.getElementById("llamadaEstado");
+  function cargarSdk() {
+    return new Promise(function (ok, mal) {
+      if (window.Twilio && window.Twilio.Device) return ok();
+      var s = document.createElement("script");
+      s.src = "https://unpkg.com/@twilio/voice-sdk@2.18.5/dist/twilio.min.js";
+      s.onload = ok; s.onerror = function () { mal(new Error("No se pudo cargar el teléfono de Twilio")); };
+      document.head.appendChild(s);
+    });
+  }
+  function terminarLlamada(texto) {
+    estadoLl.textContent = texto || "Llamada terminada.";
+    document.getElementById("colgar").textContent = "Cerrar";
+    llamada = null;
+  }
+  document.getElementById("llamar").onclick = function () {
+    panelLl.hidden = false; estadoLl.textContent = "Preparando…"; document.getElementById("colgar").textContent = "Colgar";
+    fetch("/prueba/llamada-token", { method: "POST", headers: { "X-Clave": clave } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.token) throw new Error(d.error || "Sin permiso para llamar");
+        return cargarSdk().then(function () {
+          if (dispositivo) dispositivo.destroy();
+          dispositivo = new window.Twilio.Device(d.token, { codecPreferences: ["opus", "pcmu"], logLevel: "warn" });
+          estadoLl.textContent = "Llamando… (permite el micrófono si el navegador lo pide)";
+          return dispositivo.connect();
+        });
+      })
+      .then(function (c) {
+        llamada = c;
+        c.on("accept", function () { estadoLl.textContent = "🟢 En llamada: habla con el asistente"; });
+        c.on("disconnect", function () { terminarLlamada("Llamada terminada."); });
+        c.on("cancel", function () { terminarLlamada("Llamada cancelada."); });
+        c.on("error", function (e) { terminarLlamada("⚠️ Error: " + (e.message || e)); });
+      })
+      .catch(function (e) { terminarLlamada("⚠️ " + e.message); });
+  };
+  document.getElementById("colgar").onclick = function () {
+    if (llamada) { llamada.disconnect(); return; }
+    panelLl.hidden = true;
+  };
   document.getElementById("twilio").onclick = function () {
     panelWa.hidden = false; waConectar.hidden = true; document.getElementById("waMensajes").hidden = true; document.getElementById("waManual").hidden = true;
     panelWa.querySelector(".caja > b").textContent = "Twilio";
