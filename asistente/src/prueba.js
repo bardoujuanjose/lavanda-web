@@ -84,7 +84,14 @@ export async function atenderPrueba(request, env) {
     pendientes.push({ id: "p1", tipo: "text", texto });
   }
 
-  const estado = { historial: limpiarHistorial(body.historial), pausa: body.pausa ? { desde: Date.now(), ultimoDueno: null } : null };
+  const avisos = Array.isArray(body.avisosEnviados)
+    ? body.avisosEnviados.filter((a) => a && typeof a.clave === "string").slice(-20)
+    : [];
+  const estado = {
+    historial: limpiarHistorial(body.historial),
+    pausa: body.pausa ? { desde: Date.now(), ultimoDueno: null } : null,
+    avisos,
+  };
   const { wa, salida } = whatsappDePrueba(dueno, fotos);
   const claude = new Anthropic({
     apiKey: env.ANTHROPIC_API_KEY,
@@ -98,7 +105,7 @@ export async function atenderPrueba(request, env) {
       estado, pendientes, telefono: CLIENTE, nombre: String(body.nombre || "").slice(0, 60), wa, claude, env: { ...env, OWNER_PHONE: dueno },
     });
     const nuevo = aplicarResultado(estado, resultado);
-    return json({ respuestas: salida.respuestas, avisos: salida.avisos, historial: nuevo.historial, pausa: Boolean(nuevo.pausa) });
+    return json({ respuestas: salida.respuestas, avisos: salida.avisos, historial: nuevo.historial, pausa: Boolean(nuevo.pausa), avisosEnviados: nuevo.avisos });
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) console.error("Prueba: clave de Claude no válida");
     else if (e instanceof Anthropic.APIError) console.error(`Prueba: error de Claude ${e.status}:`, e.message);
@@ -174,7 +181,7 @@ const PAGINA = `<!doctype html>
 </form></div>
 <script>
 (function () {
-  var clave = "", nombre = "", historial = [], pausa = false, foto = null, ocupado = false;
+  var clave = "", nombre = "", historial = [], avisosEnviados = [], pausa = false, foto = null, ocupado = false;
   var log = document.getElementById("log"), t = document.getElementById("t");
   function añadir(clase, texto, img) {
     var d = document.createElement("div"); d.className = clase;
@@ -189,7 +196,7 @@ const PAGINA = `<!doctype html>
   }
   function verPausa() { document.getElementById("pausa").classList.toggle("on", pausa); }
   function inicio() {
-    log.innerHTML = ""; historial = []; pausa = false; verPausa();
+    log.innerHTML = ""; historial = []; avisosEnviados = []; pausa = false; verPausa();
     añadir("info", "Conversación nueva. Prueba preguntas normales, una incidencia (\\"la 3 se ha quedado con mi dinero\\"), una foto, una queja…");
   }
   document.getElementById("lf").addEventListener("submit", function (e) {
@@ -225,7 +232,7 @@ const PAGINA = `<!doctype html>
     var esp = añadir("escribiendo", pausa ? "(reenviando a tu móvil…)" : "escribiendo…");
     fetch("/prueba/mensaje", {
       method: "POST", headers: { "Content-Type": "application/json", "X-Clave": clave },
-      body: JSON.stringify({ texto: texto, foto: f && { tipo: f.tipo, datos: f.datos }, historial: historial, pausa: pausa, nombre: nombre })
+      body: JSON.stringify({ texto: texto, foto: f && { tipo: f.tipo, datos: f.datos }, historial: historial, avisosEnviados: avisosEnviados, pausa: pausa, nombre: nombre })
     }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
       .then(function (x) {
         esp.remove();
@@ -235,6 +242,7 @@ const PAGINA = `<!doctype html>
         if (pausa && !(x.d.respuestas || []).length) añadir("info", "El asistente no contesta: el equipo está atendiendo.");
         if (x.d.error) añadir("info", "⚠️ " + x.d.error);
         if (x.d.historial) historial = x.d.historial;
+        if (x.d.avisosEnviados) avisosEnviados = x.d.avisosEnviados;
         var antes = pausa; pausa = Boolean(x.d.pausa); verPausa();
         if (pausa && !antes) añadir("info", "⏸️ Ahora el asistente queda en pausa con este cliente hasta que el equipo lo devuelva.");
       })

@@ -264,3 +264,23 @@ test("el cliente de WhatsApp construye bien las llamadas a Meta", async () => {
   const fetchError = async () => new Response(JSON.stringify({ error: { message: "Re-engagement", code: 131047 } }), { status: 400 });
   await assert.rejects(clienteWhatsApp({ WHATSAPP_PHONE_ID: "1" }, fetchError).enviarTexto(CLIENTE, "x"), (e) => e.code === 131047);
 });
+
+test("no repite un aviso que ya se envió en la conversación", async () => {
+  const aviso = { motivo: "bizum", resumen: "Cambio no devuelto", maquina: "3", importe: "12 €", telefono: "612 345 678" };
+  const usar = () => ({ stop_reason: "tool_use", content: [{ type: "tool_use", id: "t" + Math.random(), name: "avisar_al_equipo", input: aviso }] });
+  // 1ª vez: se envía y se recuerda
+  let wa = waFalso();
+  let claude = claudeFalso([usar(), texto("Anotado, en 48 h recibirás el Bizum.")]);
+  const r1 = await procesarPendientes({ estado: estadoInicial(), pendientes: [{ id: "1", tipo: "text", texto: "612345678" }], telefono: CLIENTE, nombre: "", wa, claude, env: ENV, ahora: 1000 });
+  assert.equal(wa.enviados.filter((e) => e.para === DUENO).length, 1);
+  const estado = aplicarResultado(estadoInicial(), r1);
+  assert.equal(estado.avisos.length, 1);
+  // 2ª vez en la misma conversación: Claude lo sabe y, aunque lo intente, no se envía
+  wa = waFalso();
+  claude = claudeFalso([usar(), texto("¡De nada, Anna! 😊")]);
+  const r2 = await procesarPendientes({ estado, pendientes: [{ id: "2", tipo: "text", texto: "gracias" }], telefono: CLIENTE, nombre: "", wa, claude, env: ENV, ahora: 2000 });
+  assert.match(claude.peticiones[0].messages.at(-1).content, /Avisos YA enviados/);
+  assert.equal(wa.enviados.filter((e) => e.para === DUENO).length, 0);
+  assert.match(claude.peticiones[1].messages.at(-1).content[0].content, /NO se ha vuelto a enviar/);
+  assert.equal(aplicarResultado(estado, r2).avisos.length, 1);
+});

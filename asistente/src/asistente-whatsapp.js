@@ -17,7 +17,21 @@ export const RESPUESTA_ERROR =
   "Perdona, he tenido un problema técnico. Llama a uno de nuestros agentes al 689 810 213, de 8:00 a 21:00.";
 
 export function estadoInicial() {
-  return { historial: [], pausa: null };
+  return { historial: [], pausa: null, avisos: [] };
+}
+
+const AVISO_CADUCA_MS = 7 * 24 * 60 * 60 * 1000; // pasada una semana, el mismo caso se puede volver a avisar
+
+// Identifica un aviso para no enviarlo dos veces
+export function claveAviso(datos) {
+  const cifras = (t) => String(t || "").replace(/\D/g, "");
+  return [datos.motivo, cifras(datos.telefono), cifras(datos.importe), cifras(datos.maquina)].join("|");
+}
+
+function describirAviso(a) {
+  const nombres = { bizum: "Bizum", servicio_personalizado: "servicio personalizado", justificante_factura: "justificante/factura" };
+  return [nombres[a.motivo] || a.motivo, a.maquina && `máquina ${a.maquina}`, a.importe, a.telefono && `tel. ${a.telefono}`]
+    .filter(Boolean).join(", ");
 }
 
 export function textoAyudaDueno() {
@@ -192,12 +206,19 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
     }
   }
 
+  const avisosPrevios = (estado.avisos || []).filter((a) => ahora - (a.cuando || 0) < AVISO_CADUCA_MS);
+  const enviadosAhora = [];
   const mensajes = [
     ...estado.historial,
     { role: "user", content: bloques },
     {
       role: "system",
-      content: `Hora actual en El Vendrell: ${horaActual(ahora)}.` + (nombre ? ` Nombre del cliente en WhatsApp: ${nombre}.` : ""),
+      content:
+        `Hora actual en El Vendrell: ${horaActual(ahora)}.` +
+        (nombre ? ` Nombre del cliente en WhatsApp: ${nombre}.` : "") +
+        (avisosPrevios.length
+          ? ` Avisos YA enviados al equipo en esta conversación (no los repitas): ${avisosPrevios.map(describirAviso).join("; ")}.`
+          : " Todavía no se ha enviado ningún aviso al equipo en esta conversación."),
     },
   ];
 
@@ -238,9 +259,18 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
       } else {
         try {
           const datos = typeof uso.input === "string" ? JSON.parse(uso.input) : uso.input;
+          const clave = claveAviso(datos);
+          if ([...avisosPrevios, ...enviadosAhora].some((a) => a.clave === clave)) {
+            contenido = "Este aviso ya se había enviado antes en esta conversación: NO se ha vuelto a enviar. Continúa la conversación con normalidad.";
+            resultados.push({ type: "tool_result", tool_use_id: uso.id, content: contenido });
+            continue;
+          }
           await avisarDueno({
             env, wa, telefono, nombre,
             motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, importe: datos.importe, telefonoCliente: datos.telefono,
+          });
+          enviadosAhora.push({
+            clave, cuando: ahora, motivo: datos.motivo, maquina: datos.maquina, importe: datos.importe, telefono: datos.telefono,
           });
           contenido = "Aviso enviado al equipo. Continúa la conversación según tus normas (por ejemplo, confirma el teléfono y cierra el caso).";
         } catch (e) {
@@ -257,6 +287,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
   if (!respuesta) respuesta = RESPUESTA_ERROR;
   await wa.enviarTexto(telefono, respuesta);
 
+  if (enviadosAhora.length) resultado.avisos = enviadosAhora;
   // el resumen se rehace aquí para incluir la transcripción de los audios
   resultado.anadir.push({ role: "user", content: resumirPendientes(pendientes) || "[mensaje]" }, { role: "assistant", content: respuesta });
   return resultado;
@@ -266,6 +297,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
 export function aplicarResultado(estado, resultado) {
   const nuevo = { ...estado, historial: [...estado.historial, ...resultado.anadir] };
   if (resultado.pausa !== undefined) nuevo.pausa = resultado.pausa;
+  nuevo.avisos = [...(estado.avisos || []), ...(resultado.avisos || [])].slice(-20);
   nuevo.historial = nuevo.historial.slice(-HISTORIAL_MAX);
   while (nuevo.historial.length && nuevo.historial[0].role !== "user") nuevo.historial.shift();
   return nuevo;
