@@ -14,6 +14,9 @@ const ORIGENES_PERMITIDOS = [
   "https://lavandavendrell.es",
   "https://www.lavandavendrell.es",
   "https://bardoujuanjose.github.io",
+  // mientras GitHub activa HTTPS en el dominio, la web también puede abrirse con http://
+  "http://lavandavendrell.es",
+  "http://www.lavandavendrell.es",
 ];
 
 // Límites para que nadie pueda gastar tu saldo con conversaciones enormes
