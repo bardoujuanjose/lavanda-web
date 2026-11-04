@@ -154,3 +154,14 @@ test("la memoria entre turnos es solo texto y nunca se modifica lo ya enviado", 
   assert.deepEqual(p3.slice(p2.length).map((m) => m.role), ["assistant", "user"]);
   assert.deepEqual(s.historial.map((m) => typeof m.content), ["string", "string", "string", "string"]);
 });
+
+test("las llamadas usan Sonnet 5.5 sin razonamiento previo", async () => {
+  const claude = claudeFalso([texto("Seis euros.")]);
+  const s = crearSesion({ env: ENV, claude, wa: {}, enviar: () => {} });
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "precio", last: true }));
+  const p = claude.peticiones[0];
+  assert.equal(p.model, "claude-sonnet-5-5");
+  assert.deepEqual(p.thinking, { type: "between_tools" });
+  assert.equal(p.output_config.effort, "low");
+  assert.equal(p.fallbacks, "default");
+});

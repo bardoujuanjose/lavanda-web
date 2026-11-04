@@ -74,5 +74,6 @@ mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lav
 - En los casos en que WhatsApp diría "llama al 689 810 213", la llamada se pasa a `OWNER_PHONE`.
   Si no contesta en 25 s, se le dice al cliente que escriba por WhatsApp y el dueño recibe un aviso
   de llamada perdida.
+- Modelo de las llamadas: Claude Sonnet 5.5 con `thinking: between_tools` (sin razonamiento previo, más rápido). Se puede cambiar con la variable `VOZ_MODELO`.
 - Voz: `VOZ_TTS_PROVIDER` y `VOZ_VOZ` en `wrangler.toml`.
 - Secretos: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`.

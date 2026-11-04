@@ -14,7 +14,10 @@ import {
   INSTRUCCIONES_VOZ, SALUDO_VOZ, HERRAMIENTA_AVISO, HERRAMIENTA_PASAR_LLAMADA,
 } from "./negocio.js";
 import { normalizarTelefono, clienteWhatsApp } from "./whatsapp.js";
-import { avisarDueno, claveAviso, MODELO } from "./asistente-whatsapp.js";
+import { avisarDueno, claveAviso } from "./asistente-whatsapp.js";
+
+// Modelo para las llamadas: rápido y sin razonamiento previo (se puede cambiar con VOZ_MODELO)
+const MODELO_VOZ = "claude-sonnet-5-5";
 
 const MAX_TURNOS = 40;
 const MAX_VUELTAS = 3;
@@ -211,11 +214,14 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
       if (t) historial.push({ role: "assistant", content: t });
     };
     for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
-      const control = { cortada: false, stream: null, dicho: "", previo: textoTurno };
+      const control = { cortada: false, stream: null, dicho: "", previo: textoTurno, inicio: ahora(), primera: 0 };
       actual = control;
+      const modelo = env.VOZ_MODELO || MODELO_VOZ;
       const stream = claude.beta.messages.stream({
-        model: MODELO,
+        model: modelo,
         max_tokens: 1500,
+        // Sonnet 5.5: "between_tools" = sin razonamiento previo (lo más rápido). Otros modelos: adaptativo.
+        ...(modelo === "claude-sonnet-5-5" ? { thinking: { type: "between_tools" } } : {}),
         output_config: { effort: "low" },
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",
@@ -226,6 +232,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
       control.stream = stream;
       stream.on("text", (t) => {
         if (control.cortada || !t) return;
+        if (!control.primera) control.primera = ahora() - control.inicio;
         control.dicho += t;
         enviar({ type: "text", token: t, last: false });
       });
@@ -239,7 +246,7 @@ export function crearSesion({ env, claude, wa, enviar, ahora = () => Date.now() 
       if (control.cortada) return;
       actual = null;
       enviar({ type: "text", token: "", last: true });
-      if (control.dicho) console.log(`Voz [asistente]: ${control.dicho}`);
+      if (control.dicho) console.log(`Voz [asistente] (${control.primera} ms hasta la primera palabra, ${ahora() - control.inicio} ms en total): ${control.dicho}`);
       textoTurno += (textoTurno && control.dicho ? " " : "") + control.dicho;
 
       if (msg.stop_reason === "refusal") {
