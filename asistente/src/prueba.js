@@ -233,6 +233,7 @@ const PAGINA = `<!doctype html>
       <option value="Google|es-ES-Chirp3-HD-Zephyr">Google · Zephyr</option>
       <option value="ElevenLabs|">ElevenLabs · voz por defecto</option>
     </select>
+    <input id="vozEleven" placeholder="…o pega un Voice ID de ElevenLabs" style="width:100%;padding:9px;margin:-4px 0 12px;border:1px solid #ccd;border-radius:8px;font-size:1rem">
     <button id="empezarLlamada" type="button" style="background:#075e54;color:#fff;border:0;border-radius:24px;padding:12px 26px;font:inherit;font-weight:700;cursor:pointer;margin-bottom:10px">Llamar</button>
     <p style="font-size:.85rem;color:#667781;margin:0 0 12px">Habla con el micrófono del ordenador como si fueras un cliente. Cuesta unos céntimos por minuto. Los avisos de Bizum sí te llegarán al móvil.</p>
     <button id="colgar" type="button" style="background:#d32f2f;color:#fff;border:0;border-radius:24px;padding:12px 26px;font:inherit;font-weight:700;cursor:pointer">Colgar</button>
@@ -364,6 +365,8 @@ const PAGINA = `<!doctype html>
           estadoLl.textContent = "Llamando… (permite el micrófono si el navegador lo pide)";
           var tel = (document.getElementById("telPrueba").value || "").replace(/\D/g, "");
           var voz = document.getElementById("vozPrueba").value;
+          var eleven = (document.getElementById("vozEleven").value || "").trim();
+          if (eleven) voz = "ElevenLabs|" + eleven;
           var params = {};
           if (tel) params.TelefonoPrueba = tel;
           if (voz) params.VozPrueba = voz;

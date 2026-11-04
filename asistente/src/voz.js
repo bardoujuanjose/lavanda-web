@@ -122,7 +122,9 @@ export async function atenderVoz(request, env, ctx) {
       voice: env.VOZ_VOZ || "Lucia-Neural",
     };
     // En las llamadas de prueba desde el navegador se puede elegir otra voz para compararlas
-    if (String(p.From || "").startsWith("client:") && VOCES_PRUEBA.includes(p.VozPrueba)) {
+    // Cualquier voz de ElevenLabs por su "Voice ID" (solo letras y números)
+    const vozEleven = /^ElevenLabs\|[A-Za-z0-9]{15,40}$/.test(p.VozPrueba || "");
+    if (String(p.From || "").startsWith("client:") && (VOCES_PRUEBA.includes(p.VozPrueba) || vozEleven)) {
       const [proveedor, voz] = p.VozPrueba.split("|");
       atributos.ttsProvider = proveedor;
       if (voz) atributos.voice = voz; else delete atributos.voice;

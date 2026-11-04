@@ -207,3 +207,11 @@ test("en las llamadas de prueba se puede elegir otra voz, solo de la lista", asy
   const t3 = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA6", From: "+34612345678", VozPrueba: "Google|es-ES-Chirp3-HD-Aoede" }), ENV)).text();
   assert.match(t3, /ttsProvider="Amazon"/);
 });
+
+test("se puede probar cualquier voz de ElevenLabs por su ID", async () => {
+  const t = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA5", From: "client:prueba-lavanda", VozPrueba: "ElevenLabs|AbCdEfGhIjKlMnOpQrSt" }), ENV)).text();
+  assert.match(t, /ttsProvider="ElevenLabs"/);
+  assert.match(t, /voice="AbCdEfGhIjKlMnOpQrSt"/);
+  const malo = await (await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA4", From: "client:prueba-lavanda", VozPrueba: "ElevenLabs|<script>" }), ENV)).text();
+  assert.match(malo, /ttsProvider="Amazon"/);
+});
