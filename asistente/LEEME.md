@@ -6,6 +6,7 @@ Un mismo servidor (Cloudflare Worker) con dos asistentes que usan Claude:
 |---|---|---|
 | Chat de la web | `/chat` | Solo informa. Los problemas los manda a WhatsApp. |
 | WhatsApp (689 81 02 13) | `/whatsapp` | Informa, entiende fotos, gestiona incidencias y avisa al dueño. |
+| Teléfono (Twilio) | `/voz` | Mismas normas que WhatsApp, hablando. Pasa la llamada al dueño en los casos difíciles. |
 
 ```
 Web:       cliente → chat.js → /chat ─────────────┐
@@ -63,3 +64,15 @@ mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lav
 - Modelo: Claude Opus 5.5. Aprox. 1 céntimo por respuesta (algo más si hay fotos).
 - WhatsApp: Meta cobra según el tipo de conversación; las respuestas a clientes dentro de 24 h suelen ser gratuitas.
 - Pon un **límite de gasto mensual** en platform.claude.com → Gasto → Límites.
+
+## Asistente de voz (Twilio ConversationRelay)
+
+- En Twilio, el número tiene configurado en **Voice → A call comes in**: Webhook
+  `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (HTTP POST).
+- Las normas son las mismas que en WhatsApp (`PROCEDIMIENTOS` en `negocio.js`) con adaptaciones para
+  hablar (`INSTRUCCIONES_VOZ`).
+- En los casos en que WhatsApp diría "llama al 689 810 213", la llamada se pasa a `OWNER_PHONE`.
+  Si no contesta en 25 s, se le dice al cliente que escriba por WhatsApp y el dueño recibe un aviso
+  de llamada perdida.
+- Voz: `VOZ_TTS_PROVIDER` y `VOZ_VOZ` en `wrangler.toml`.
+- Secretos: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`.

@@ -101,6 +101,7 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
     bizum: "💸 *Bizum pendiente de verificar*",
     servicio_personalizado: "🏡 *Servicio personalizado*",
     justificante_factura: "🧾 *Justificante / factura*",
+    llamada_perdida: "📞 *Llamada perdida (no contestaste)*",
     otro: "📌 *Aviso*",
   };
   const texto = [

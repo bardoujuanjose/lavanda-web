@@ -1,0 +1,128 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
+import { firmaTwilioValida, paseLlamada, crearSesion, atenderVoz } from "../src/voz.js";
+
+const ENV = { TWILIO_AUTH_TOKEN: "tok", OWNER_PHONE: "600111222" };
+
+function firmar(url, params) {
+  const base = url + Object.keys(params).sort().map((k) => k + params[k]).join("");
+  return createHmac("sha1", "tok").update(base).digest("base64");
+}
+function peticion(url, params) {
+  return new Request(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Twilio-Signature": firmar(url, params) },
+    body: new URLSearchParams(params).toString(),
+  });
+}
+
+test("comprueba la firma de Twilio", async () => {
+  const p = { CallSid: "CA1", From: "+34612345678" };
+  assert.equal(await firmaTwilioValida("tok", "https://x/voz", p, firmar("https://x/voz", p)), true);
+  assert.equal(await firmaTwilioValida("otro", "https://x/voz", p, firmar("https://x/voz", p)), false);
+});
+
+test("una llamada nueva conecta con el asistente (voz de mujer, español)", async () => {
+  const r = await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA1", From: "+34612345678" }), ENV);
+  const t = await r.text();
+  assert.match(t, /<Connect action="https:\/\/x.dev\/voz\/fin">/);
+  assert.match(t, /<ConversationRelay url="wss:\/\/x.dev\/voz\/ws\?c=CA1&amp;t=[0-9a-f]{32}"/);
+  assert.match(t, /language="es-ES"/);
+  assert.match(t, /voice="Lucia-Neural"/);
+  assert.match(t, /welcomeGreeting="Hola, soy el asistente virtual de Lavanda/);
+  const mala = new Request("https://x.dev/voz", { method: "POST", headers: { "X-Twilio-Signature": "x" }, body: "CallSid=CA1" });
+  assert.equal((await atenderVoz(mala, ENV)).status, 403);
+});
+
+test("al pasar la llamada suena en el móvil del dueño, y si no contesta se le avisa", async () => {
+  const r = await atenderVoz(peticion("https://x.dev/voz/fin", { CallSid: "CA1", From: "+34612345678", To: "+34977000000", HandoffData: JSON.stringify({ accion: "pasar", resumen: "Puerta 3 no abre" }) }), ENV);
+  const t = await r.text();
+  assert.match(t, /Te paso con un compañero/);
+  assert.match(t, /<Dial timeout="25" callerId="\+34612345678"/);
+  assert.match(t, /<Number>\+34600111222<\/Number>/);
+  const sin = await (await atenderVoz(peticion("https://x.dev/voz/fin", { CallSid: "CA1", From: "+34612345678" }), ENV)).text();
+  assert.match(sin, /<Hangup\/>/);
+  const tareas = [];
+  const r2 = await atenderVoz(peticion("https://x.dev/voz/tras-dial?r=Puerta", { DialCallStatus: "no-answer", From: "+34612345678" }), { ...ENV, WHATSAPP_TOKEN: "" }, { waitUntil: (p) => tareas.push(p) });
+  assert.match(await r2.text(), /Escríbenos por WhatsApp/);
+  assert.equal(tareas.length, 1);
+});
+
+test("el WebSocket exige el pase de la llamada", async () => {
+  const pase = await paseLlamada(ENV, "CA1");
+  const mal = new Request("https://x.dev/voz/ws?c=CA1&t=000", { headers: { Upgrade: "websocket" } });
+  assert.equal((await atenderVoz(mal, ENV)).status, 403);
+  assert.equal(pase.length, 32);
+});
+
+// --- Conversación ---
+function streamFalso(respuesta) {
+  const oyentes = {};
+  return {
+    on(ev, cb) { oyentes[ev] = cb; return this; },
+    abort() { this.abortado = true; },
+    async finalMessage() {
+      for (const b of respuesta.content) if (b.type === "text") for (const trozo of b.text.match(/.{1,5}/g)) oyentes.text?.(trozo);
+      return respuesta;
+    },
+  };
+}
+function claudeFalso(respuestas) {
+  const peticiones = [];
+  return { peticiones, beta: { messages: { stream: (p) => { peticiones.push(structuredClone(p)); return streamFalso(respuestas.shift()); } } } };
+}
+const texto = (t) => ({ stop_reason: "end_turn", content: [{ type: "text", text: t }] });
+
+test("responde por voz en trozos y recuerda la conversación", async () => {
+  const enviados = [];
+  const claude = claudeFalso([texto("La lavadora M cuesta seis euros."), texto("De nada, hasta pronto.")]);
+  const s = crearSesion({ env: ENV, claude, wa: {}, enviar: (o) => enviados.push(o) });
+  await s.recibir(JSON.stringify({ type: "setup", from: "+34612345678", callSid: "CA1" }));
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "¿Cuánto cuesta la lavadora pequeña?", last: true }));
+  const dicho = enviados.filter((e) => e.type === "text").map((e) => e.token).join("");
+  assert.equal(dicho, "La lavadora M cuesta seis euros.");
+  assert.equal(enviados.at(-1).last, true);
+  assert.match(claude.peticiones[0].messages.at(-1).content, /acaba en 6 7 8/);
+  assert.match(claude.peticiones[0].system[0].text, /LLAMADA DE TELÉFONO/);
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "Gracias", last: true }));
+  assert.deepEqual(claude.peticiones[1].messages.slice(0, 3).map((m) => m.role), ["user", "assistant", "user"]);
+});
+
+test("pasar_llamada termina la sesión con los datos para pasarla", async () => {
+  const enviados = [];
+  const claude = claudeFalso([{ stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "pasar_llamada", input: { resumen: "La puerta de la 3 no abre" } }] }]);
+  const s = crearSesion({ env: ENV, claude, wa: {}, enviar: (o) => enviados.push(o) });
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "no se abre la puerta de la 3", last: true }));
+  const fin = enviados.find((e) => e.type === "end");
+  assert.deepEqual(JSON.parse(fin.handoffData), { accion: "pasar", resumen: "La puerta de la 3 no abre" });
+});
+
+test("el aviso de Bizum se envía una sola vez por llamada", async () => {
+  const enviadosWa = [];
+  const wa = { enviarTexto: async (para, t) => enviadosWa.push({ para, t }) };
+  const usar = () => ({ stop_reason: "tool_use", content: [{ type: "tool_use", id: "t" + Math.random(), name: "avisar_al_equipo", input: { motivo: "bizum", resumen: "Cambio", maquina: "3", importe: "12 €", telefono: "612345678" } }] });
+  const claude = claudeFalso([usar(), texto("Anotado."), usar(), texto("De nada.")]);
+  const s = crearSesion({ env: ENV, claude, wa, enviar: () => {} });
+  await s.recibir(JSON.stringify({ type: "setup", from: "+34612345678" }));
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "sí, a este número", last: true }));
+  await s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "gracias", last: true }));
+  assert.equal(enviadosWa.length, 1);
+  assert.match(enviadosWa[0].t, /Bizum pendiente/);
+  assert.match(enviadosWa[0].t, /Llamada/);
+});
+
+test("si el cliente interrumpe, se corta la respuesta", async () => {
+  const enviados = [];
+  let liberar;
+  const lento = { on(ev, cb) { this.cb = cb; return this; }, abort() { this.abortado = true; liberar(); }, finalMessage() { this.cb("Hola, la lav"); return new Promise((r) => { liberar = () => r(texto("Hola, la lavadora...")); }); } };
+  const claude = { beta: { messages: { stream: () => lento } } };
+  const s = crearSesion({ env: ENV, claude, wa: {}, enviar: (o) => enviados.push(o) });
+  const p = s.recibir(JSON.stringify({ type: "prompt", voicePrompt: "precio", last: true }));
+  await new Promise((r) => setTimeout(r, 5));
+  await s.recibir(JSON.stringify({ type: "interrupt", utteranceUntilInterrupt: "Hola, la" }));
+  await p;
+  assert.equal(lento.abortado, true);
+  assert.ok(!enviados.some((e) => e.last === true));
+  assert.match(s.historial.at(-1).content, /Hola, la \[interrumpido\]/);
+});
