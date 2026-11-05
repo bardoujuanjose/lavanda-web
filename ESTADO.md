@@ -40,5 +40,5 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
 3. **Google Maps**: corregir horario (pone cierre 22:00; es 8:00–21:00), añadir descripción y redes.
 4. **DonDominio**: poner la renovación del dominio en automática (caduca el 04/11/2027).
 5. **Meta**: plantilla `aviso_lavanda` (Utilidad, español, cuerpo `Nuevo aviso de Lavanda: {{1}}`) y método de pago.
-6. **GitHub Pages**: marcar "Enforce HTTPS".
+6. ~~**GitHub Pages**: marcar "Enforce HTTPS"~~ (hecho).
 7. **Claude Console**: poner límite de gasto mensual.
