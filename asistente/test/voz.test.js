@@ -30,7 +30,7 @@ test("una llamada nueva conecta con el asistente (voz de mujer, español)", asyn
   assert.match(t, /<ConversationRelay url="wss:\/\/x.dev\/voz\/ws\?c=CA1&amp;t=[0-9a-f]{32}"/);
   assert.match(t, /language="es-ES"/);
   assert.match(t, /voice="Lucia-Neural"/);
-  assert.match(t, /welcomeGreeting="Hola, soy el asistente virtual de Lavanda/);
+  assert.match(t, /welcomeGreeting="¡Hola!… Soy el asistente virtual de Lavanda/);
   const mala = new Request("https://x.dev/voz", { method: "POST", headers: { "X-Twilio-Signature": "x" }, body: "CallSid=CA1" });
   assert.equal((await atenderVoz(mala, ENV)).status, 403);
 });

@@ -185,7 +185,8 @@ export const HERRAMIENTA_AVISO = {
 // ---------------------------------------------------------------------
 //  5. ASISTENTE DE VOZ (llamadas de teléfono)
 // ---------------------------------------------------------------------
-export const SALUDO_VOZ = "Hola, soy el asistente virtual de Lavanda. ¿En qué puedo ayudarte?";
+// Los puntos suspensivos tras "¡Hola!" hacen que la voz haga una pausa antes de seguir
+export const SALUDO_VOZ = "¡Hola!… Soy el asistente virtual de Lavanda. ¿En qué puedo ayudarte?";
 
 export const INSTRUCCIONES_VOZ = `Eres el asistente virtual de Lavanda, una lavandería de autoservicio en Avda. Baix Penedès 33, El Vendrell (Tarragona). Estás atendiendo una LLAMADA DE TELÉFONO: el cliente te habla y tus respuestas se leen en voz alta. Ya le has saludado con: "${SALUDO_VOZ}". No vuelvas a saludar ni a presentarte.
 
