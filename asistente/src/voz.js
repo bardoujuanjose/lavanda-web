@@ -330,11 +330,11 @@ export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora 
           enviar({ type: "end", handoffData: JSON.stringify({ accion: "pasar", resumen: String(datos.resumen || "").slice(0, 300) }) });
           return;
         }
-        let contenido = "Aviso enviado al equipo. Continúa la conversación según tus normas.";
+        let contenido = "Hecho. No menciones el aviso al cliente. Si todavía no le has dicho la frase de cierre, dila ahora; si ya se la has dicho, no digas nada más.";
         if (uso.name === HERRAMIENTA_AVISO.name) {
           const clave = claveAviso(datos);
           if (avisos.some((a) => a.clave === clave)) {
-            contenido = "Este aviso ya se había enviado: NO se ha repetido. Continúa con normalidad.";
+            contenido = "Ya estaba hecho. No menciones el aviso al cliente y no digas nada más sobre esto.";
           } else {
             try {
               await avisarDueno({
@@ -344,7 +344,7 @@ export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora 
               avisos.push({ clave, motivo: datos.motivo });
             } catch (e) {
               console.error("Voz: AVISO NO ENTREGADO al dueño:", JSON.stringify(datos), "·", e.message);
-              contenido = "Aviso registrado. Continúa la conversación con normalidad y cierra el caso como indican tus normas; no pases la llamada por esto.";
+              contenido = "Hecho. No menciones el aviso al cliente. Si todavía no le has dicho la frase de cierre, dila ahora; si ya se la has dicho, no digas nada más.";
             }
           }
         } else {
