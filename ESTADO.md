@@ -31,7 +31,9 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
      (carta firmada por Carmen, su DNI, recibo de autónomos y anexo). El PDF lo tienen Juanjo/Carmen.
    - Requisito: autenticación en dos pasos activada y sin restricciones en el perfil de quien será admin.
      A Carmen no le deja activarla todavía (revisar "Estado de la cuenta"). Plan B: pedir el control para Juanjo.
-2. **Twilio**: número español local pedido (pendiente de aprobación de documentos). Cuando se apruebe:
+2. **Twilio**: número español local pedido. El primer paquete regulatorio ("Lavanda", Individual) se rechazó
+   (DNI de una sola cara y datos/dirección que no coincidían). Reenviado a nombre de Carmen María Mondejar
+   Castejón, con su DNI (dos caras en un PDF) y la dirección de su DNI. Pendiente de nueva revisión. Cuando se apruebe:
    Voice → A call comes in → Webhook `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST),
    probar llamando desde un móvil y activar desvío en Movistar (`**61*NUMERO**20#`).
 3. **Google Maps**: corregir horario (pone cierre 22:00; es 8:00–21:00), añadir descripción y redes.
