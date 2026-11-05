@@ -286,7 +286,7 @@ const PAGINA = `<!doctype html>
   }
   // Como WhatsApp: *texto* se ve en negrita
   function conNegritas(destino, texto) {
-    var partes = texto.split(/\*([^*\n]+)\*/);
+    var partes = texto.split(/\\*([^*\\n]+)\\*/);
     partes.forEach(function (p, i) {
       if (i % 2) { var b = document.createElement("b"); b.textContent = p; destino.appendChild(b); }
       else if (p) destino.appendChild(document.createTextNode(p));
