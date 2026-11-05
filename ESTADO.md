@@ -18,6 +18,7 @@ Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou
 | Facebook | facebook.com/lavandalaundryelvendrell | Web, correo, teléfono y dirección actualizados. |
 | Instagram | @lavandavendrell | Cuenta profesional, en la cuenta de Meta de Juanjo. |
 | Google Maps | Perfil de Empresa | Juanjo propietario principal, Carmen propietaria. |
+| Google Search Console | Propiedad de dominio lavandavendrell.es | Verificada (TXT google-site-verification en DonDominio, no borrar). Sitemap enviado, indexación solicitada. Web con datos estructurados (Laundromat), sitemap.xml y robots.txt. |
 
 Secretos (en Cloudflare, nunca en el repo): ANTHROPIC_API_KEY, WHATSAPP_TOKEN, WHATSAPP_PHONE_ID,
 WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN.
