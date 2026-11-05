@@ -1,0 +1,96 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Lavanda//Instagram//ES
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:lavanda-ig-20261110@lavandavendrell.es
+DTSTAMP:20261105T180000Z
+DTSTART;TZID=Europe/Madrid:20261110T190000
+DTEND;TZID=Europe/Madrid:20261110T191500
+SUMMARY:Instagram Lavanda: publicación 2 · Precios
+DESCRIPTION:Subir la imagen y el texto (ubicación El Vendrell) y compartir en Historias. Pídele a Claude: toca la siguiente.
+BEGIN:VALARM
+TRIGGER:-PT0M
+ACTION:DISPLAY
+DESCRIPTION:Toca publicar en Instagram
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:lavanda-ig-20261113@lavandavendrell.es
+DTSTAMP:20261105T180000Z
+DTSTART;TZID=Europe/Madrid:20261113T190000
+DTEND;TZID=Europe/Madrid:20261113T191500
+SUMMARY:Instagram Lavanda: publicación 3 · Todo incluido
+DESCRIPTION:Subir la imagen y el texto (ubicación El Vendrell) y compartir en Historias. Pídele a Claude: toca la siguiente.
+BEGIN:VALARM
+TRIGGER:-PT0M
+ACTION:DISPLAY
+DESCRIPTION:Toca publicar en Instagram
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:lavanda-ig-20261117@lavandavendrell.es
+DTSTAMP:20261105T180000Z
+DTSTART;TZID=Europe/Madrid:20261117T190000
+DTEND;TZID=Europe/Madrid:20261117T191500
+SUMMARY:Instagram Lavanda: publicación 4 · Edredones
+DESCRIPTION:Subir la imagen y el texto (ubicación El Vendrell) y compartir en Historias. Pídele a Claude: toca la siguiente.
+BEGIN:VALARM
+TRIGGER:-PT0M
+ACTION:DISPLAY
+DESCRIPTION:Toca publicar en Instagram
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:lavanda-ig-20261120@lavandavendrell.es
+DTSTAMP:20261105T180000Z
+DTSTART;TZID=Europe/Madrid:20261120T190000
+DTEND;TZID=Europe/Madrid:20261120T191500
+SUMMARY:Instagram Lavanda: publicación 5 · ¿Llueve? Secadoras XL
+DESCRIPTION:Subir la imagen y el texto (ubicación El Vendrell) y compartir en Historias. Pídele a Claude: toca la siguiente.
+BEGIN:VALARM
+TRIGGER:-PT0M
+ACTION:DISPLAY
+DESCRIPTION:Toca publicar en Instagram
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:lavanda-ig-20261124@lavandavendrell.es
+DTSTAMP:20261105T180000Z
+DTSTART;TZID=Europe/Madrid:20261124T190000
+DTEND;TZID=Europe/Madrid:20261124T191500
+SUMMARY:Instagram Lavanda: publicación 6 · Tarjeta de fidelización
+DESCRIPTION:Subir la imagen y el texto (ubicación El Vendrell) y compartir en Historias. Pídele a Claude: toca la siguiente.
+BEGIN:VALARM
+TRIGGER:-PT0M
+ACTION:DISPLAY
+DESCRIPTION:Toca publicar en Instagram
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:lavanda-ig-20261127@lavandavendrell.es
+DTSTAMP:20261105T180000Z
+DTSTART;TZID=Europe/Madrid:20261127T190000
+DTEND;TZID=Europe/Madrid:20261127T191500
+SUMMARY:Instagram Lavanda: publicación 7 · Asistente de WhatsApp
+DESCRIPTION:Subir la imagen y el texto (ubicación El Vendrell) y compartir en Historias. Pídele a Claude: toca la siguiente.
+BEGIN:VALARM
+TRIGGER:-PT0M
+ACTION:DISPLAY
+DESCRIPTION:Toca publicar en Instagram
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:lavanda-ig-20261201@lavandavendrell.es
+DTSTAMP:20261105T180000Z
+DTSTART;TZID=Europe/Madrid:20261201T190000
+DTEND;TZID=Europe/Madrid:20261201T191500
+SUMMARY:Instagram Lavanda: publicación 8 · Consejos de lavado
+DESCRIPTION:Subir la imagen y el texto (ubicación El Vendrell) y compartir en Historias. Pídele a Claude: toca la siguiente.
+BEGIN:VALARM
+TRIGGER:-PT0M
+ACTION:DISPLAY
+DESCRIPTION:Toca publicar en Instagram
+END:VALARM
+END:VEVENT
+END:VCALENDAR
