@@ -33,8 +33,8 @@ OWNER_TEMPLATE = "aviso_lavanda"
 # Voz del asistente telefónico (Twilio ConversationRelay)
 VOZ_IDIOMA = "es-ES"
 VOZ_TTS_PROVIDER = "ElevenLabs"
-# Voz elegida en la biblioteca de ElevenLabs (Voice ID)
-VOZ_VOZ = "2BJPFS2QZRUEpfkbclGy"
+# Voz elegida en ElevenLabs: "VoiceID-modelo-velocidad_estabilidad_similitud" (velocidad 0.9)
+VOZ_VOZ = "2BJPFS2QZRUEpfkbclGy-flash_v2_5-0.9_0.5_0.75"
 OWNER_TEMPLATE_LANG = "es"
 
 # SECRETOS: NO van aquí. Se guardan en Cloudflare

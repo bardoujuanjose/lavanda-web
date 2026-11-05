@@ -141,8 +141,8 @@ export async function atenderVoz(request, env, ctx) {
     }
     // Velocidad de ElevenLabs (prueba): "voz-modelo-velocidad_estabilidad_similitud"
     if (String(p.From || "").startsWith("client:") && ["0.8", "0.85", "0.9", "0.95", "1.0"].includes(p.VelocidadPrueba)
-        && atributos.ttsProvider === "ElevenLabs" && atributos.voice && !atributos.voice.includes("-")) {
-      atributos.voice = `${atributos.voice}-flash_v2_5-${p.VelocidadPrueba}_0.5_0.75`;
+        && atributos.ttsProvider === "ElevenLabs" && atributos.voice) {
+      atributos.voice = `${atributos.voice.split("-")[0]}-flash_v2_5-${p.VelocidadPrueba}_0.5_0.75`;
       console.log(`Voz [prueba]: velocidad ${p.VelocidadPrueba} → ${atributos.voice}`);
     }
     if (env.VOZ_STT_PROVIDER) atributos.transcriptionProvider = env.VOZ_STT_PROVIDER;
