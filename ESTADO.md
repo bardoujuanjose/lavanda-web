@@ -42,3 +42,16 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
 5. **Meta**: plantilla `aviso_lavanda` (Utilidad, español, cuerpo `Nuevo aviso de Lavanda: {{1}}`) y método de pago.
 6. ~~**GitHub Pages**: marcar "Enforce HTTPS"~~ (hecho).
 7. **Claude Console**: poner límite de gasto mensual.
+
+## Próxima tarea: publicaciones de Instagram (@lavandavendrell)
+
+Preparar el primer mes de publicaciones para programarlas desde la app de Instagram o desde el
+Planificador de Meta Business Suite (no se puede publicar por API: la página de Facebook no tiene
+control total).
+- Frecuencia: 2 por semana (martes y viernes, 19:00), unas 8 publicaciones.
+- Formato: imágenes 1080×1350 con el estilo de la web (colores de `styles.css`, `marca.png`,
+  `emblema.png`, ilustración de las botellas de `index.html`) + texto y hashtags para cada una.
+- Temas: presentación, precios (M 14 kg 6 €, L 16 kg 8 €, secadora XL 4 €/20 min), detergente +
+  suavizante + desinfectante incluidos, edredones (individual M, matrimonio L, programa 1),
+  "¿llueve? secadoras XL", tarjeta de fidelización (-10 %), asistente de WhatsApp, consejos de lavado.
+- Sin fotos reales por ahora (usar diseños); si llegan fotos del local, combinarlas.
