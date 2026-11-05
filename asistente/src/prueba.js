@@ -288,8 +288,20 @@ const PAGINA = `<!doctype html>
   function conNegritas(destino, texto) {
     var partes = texto.split(/\\*([^*\\n]+)\\*/);
     partes.forEach(function (p, i) {
-      if (i % 2) { var b = document.createElement("b"); b.textContent = p; destino.appendChild(b); }
-      else if (p) destino.appendChild(document.createTextNode(p));
+      var cont = destino;
+      if (i % 2) { cont = document.createElement("b"); destino.appendChild(cont); }
+      conEnlaces(cont, p);
+    });
+  }
+  // Como WhatsApp: las direcciones web se pueden pulsar
+  function conEnlaces(destino, texto) {
+    if (!texto) return;
+    texto.split(/(https?:[^ \\n]+)/).forEach(function (t, i) {
+      if (!t) return;
+      if (i % 2) {
+        var a = document.createElement("a"); a.href = t; a.textContent = t; a.target = "_blank"; a.rel = "noopener";
+        destino.appendChild(a);
+      } else destino.appendChild(document.createTextNode(t));
     });
   }
   function aviso(texto) {
