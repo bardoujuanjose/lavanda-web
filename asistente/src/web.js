@@ -5,19 +5,11 @@
 //  (variable ANTHROPIC_API_KEY), nunca en la web.
 // =====================================================================
 import Anthropic from "@anthropic-ai/sdk";
-import { INSTRUCCIONES_WEB } from "./negocio.js";
+import { obtenerCliente } from "./clientes/index.js";
 
 const MODELO = "claude-opus-5-5";
 
-// Webs que pueden usar el asistente
-const ORIGENES_PERMITIDOS = [
-  "https://lavandavendrell.es",
-  "https://www.lavandavendrell.es",
-  "https://bardoujuanjose.github.io",
-  // mientras GitHub activa HTTPS en el dominio, la web también puede abrirse con http://
-  "http://lavandavendrell.es",
-  "http://www.lavandavendrell.es",
-];
+// Las webs que pueden usar el asistente (origenesPermitidos) están en la ficha de cada lavandería
 
 // Límites para que nadie pueda gastar tu saldo con conversaciones enormes
 const MAX_MENSAJES = 20;          // mensajes de historial por petición
@@ -55,9 +47,9 @@ export function extraerWhatsapp(texto) {
   return { reply: texto.replace(patron, "").trim(), whatsapp: m[1].trim() };
 }
 
-function horaActualVendrell() {
+function horaActual(zonaHoraria) {
   return new Intl.DateTimeFormat("es-ES", {
-    timeZone: "Europe/Madrid",
+    timeZone: zonaHoraria,
     weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
   }).format(new Date());
 }
@@ -73,10 +65,10 @@ function demasiadasPeticiones(ip) {
   return lista.length > MAX_PETICIONES_IP;
 }
 
-function cabecerasCors(origen) {
-  const permitido = ORIGENES_PERMITIDOS.includes(origen) || /^http:\/\/localhost(:\d+)?$/.test(origen || "");
+function cabecerasCors(origen, origenesPermitidos) {
+  const permitido = origenesPermitidos.includes(origen) || /^http:\/\/localhost(:\d+)?$/.test(origen || "");
   return {
-    "Access-Control-Allow-Origin": permitido ? origen : ORIGENES_PERMITIDOS[0],
+    "Access-Control-Allow-Origin": permitido ? origen : origenesPermitidos[0],
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Vary": "Origin",
@@ -93,18 +85,19 @@ function json(datos, estado, cors) {
 // ---------------------------------------------------------------------
 //  Pregunta a Claude
 // ---------------------------------------------------------------------
-export async function preguntarAClaude(client, messages) {
+export async function preguntarAClaude(client, messages, cliente = obtenerCliente()) {
+  const { ficha, textos } = cliente;
   const response = await client.beta.messages.create({
     model: MODELO,
     max_tokens: 4000,
     output_config: { effort: "low" },          // respuestas de chat: rápidas y económicas
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",                      // si Claude rechaza por seguridad, otro modelo lo intenta
-    system: [{ type: "text", text: INSTRUCCIONES_WEB, cache_control: { type: "ephemeral" } }],
+    system: [{ type: "text", text: textos.INSTRUCCIONES_WEB, cache_control: { type: "ephemeral" } }],
     messages: [
       ...messages,
       // Nota del sistema con la hora actual (no rompe la caché de las instrucciones)
-      { role: "system", content: `Hora actual en El Vendrell: ${horaActualVendrell()}.` },
+      { role: "system", content: `${textos.HORA_ETIQUETA}: ${horaActual(ficha.zonaHoraria)}.` },
     ],
   });
 
@@ -124,7 +117,8 @@ export async function preguntarAClaude(client, messages) {
 //  Petición del chat de la web (ruta /chat)
 // ---------------------------------------------------------------------
 export async function atenderChatWeb(request, env) {
-    const cors = cabecerasCors(request.headers.get("Origin"));
+    const cliente = obtenerCliente(env);
+    const cors = cabecerasCors(request.headers.get("Origin"), cliente.ficha.origenesPermitidos);
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     if (request.method !== "POST") return json({ error: "Usa POST" }, 405, cors);
@@ -146,7 +140,7 @@ export async function atenderChatWeb(request, env) {
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 60_000 });
 
     try {
-      const resultado = await preguntarAClaude(client, body.messages);
+      const resultado = await preguntarAClaude(client, body.messages, cliente);
       return json(resultado, 200, cors);
     } catch (error) {
       if (error instanceof Anthropic.AuthenticationError) {

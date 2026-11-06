@@ -2,7 +2,7 @@
 //  Lógica del asistente de WhatsApp
 //  (sin dependencias de Cloudflare, para poder probarla fácilmente)
 // =====================================================================
-import { INSTRUCCIONES_WHATSAPP, HERRAMIENTA_AVISO } from "./negocio.js";
+import { obtenerCliente } from "./clientes/index.js";
 import { ERROR_FUERA_DE_24H, normalizarTelefono } from "./whatsapp.js";
 
 export const MODELO = "claude-opus-5-5";
@@ -13,8 +13,8 @@ const FOTO_MAX_BYTES = 5 * 1024 * 1024;
 const TIPOS_FOTO = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_VUELTAS = 4;
 
-export const RESPUESTA_ERROR =
-  "Perdona, he tenido un problema técnico. Llama a uno de nuestros agentes al 689 810 213, de 8:00 a 21:00.";
+// Frase de error de la lavandería por defecto (cada lavandería tiene la suya en sus textos)
+export const RESPUESTA_ERROR = obtenerCliente().textos.RESPUESTA_ERROR;
 
 export function estadoInicial() {
   return { historial: [], pausa: null, avisos: [] };
@@ -34,14 +34,14 @@ function describirAviso(a) {
     .filter(Boolean).join(", ");
 }
 
-export function textoAyudaDueno() {
+export function textoAyudaDueno({ textos } = obtenerCliente()) {
   return [
-    "🤖 *Asistente de Lavanda: cómo usarlo*",
+    textos.AYUDA_DUENO_TITULO,
     "",
     "Cuando te llegue un aviso, contesta al cliente escribiendo aquí:",
     "#34612345678 tu mensaje",
     "",
-    "El cliente lo recibe desde el número de Lavanda y el asistente se queda callado en ese chat.",
+    textos.AYUDA_DUENO_NUMERO,
     "Para que el asistente vuelva a atenderle:",
     "#34612345678 fin",
     "",
@@ -56,9 +56,9 @@ export function leerComandoDueno(texto) {
   return { telefono: normalizarTelefono(m[1]), texto: m[2].trim() };
 }
 
-function horaActual(ahora) {
+function horaActual(ahora, zonaHoraria) {
   return new Intl.DateTimeFormat("es-ES", {
-    timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+    timeZone: zonaHoraria, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
   }).format(new Date(ahora));
 }
 
@@ -132,7 +132,9 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
 //  Procesa los mensajes acumulados de un cliente
 //  Devuelve { anadir: [...mensajes para la memoria], pausa: undefined | null | {...} }
 // ---------------------------------------------------------------------
-export async function procesarPendientes({ estado, pendientes, telefono, nombre, wa, claude, env, transcribir, ahora = Date.now() }) {
+export async function procesarPendientes({ estado, pendientes, telefono, nombre, wa, claude, env, transcribir, ahora = Date.now(), cliente = obtenerCliente(env) }) {
+  const { ficha, textos } = cliente;
+  const HERRAMIENTA_AVISO = textos.HERRAMIENTA_AVISO;
   const resultado = { anadir: [], pausa: undefined };
   let pausa = estado.pausa;
   if (pausaCaducada(pausa, ahora)) { pausa = null; resultado.pausa = null; }
@@ -215,7 +217,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
     {
       role: "system",
       content:
-        `Hora actual en El Vendrell: ${horaActual(ahora)}.` +
+        `${textos.HORA_ETIQUETA}: ${horaActual(ahora, ficha.zonaHoraria)}.` +
         (nombre ? ` Nombre del cliente en WhatsApp: ${nombre}.` : "") +
         (avisosPrevios.length
           ? ` Avisos YA enviados al equipo en esta conversación (no los repitas): ${avisosPrevios.map(describirAviso).join("; ")}.`
@@ -232,7 +234,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
       output_config: { effort: "medium" },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: [{ type: "text", text: INSTRUCCIONES_WHATSAPP, cache_control: { type: "ephemeral" } }],
+      system: [{ type: "text", text: textos.INSTRUCCIONES_WHATSAPP, cache_control: { type: "ephemeral" } }],
       tools: [HERRAMIENTA_AVISO],
       messages: mensajes,
     });
@@ -286,7 +288,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
     mensajes.push({ role: "user", content: resultados });
   }
 
-  if (!respuesta) respuesta = RESPUESTA_ERROR;
+  if (!respuesta) respuesta = textos.RESPUESTA_ERROR;
   await wa.enviarTexto(telefono, respuesta);
 
   if (enviadosAhora.length) resultado.avisos = enviadosAhora;
@@ -308,7 +310,7 @@ export function aplicarResultado(estado, resultado) {
 // ---------------------------------------------------------------------
 //  Mensajes del dueño: "#telefono texto" o "#telefono fin"
 // ---------------------------------------------------------------------
-export async function comandoDueno({ estado, telefono, texto, wa, env, ahora = Date.now() }) {
+export async function comandoDueno({ estado, telefono, texto, wa, env, ahora = Date.now(), cliente = obtenerCliente(env) }) {
   const dueno = normalizarTelefono(env.OWNER_PHONE);
   if (!texto) {
     await wa.enviarTexto(dueno, `Escribe el mensaje después del número. Ejemplo:\n#${telefono} Hola, ya lo hemos revisado`);
@@ -328,7 +330,7 @@ export async function comandoDueno({ estado, telefono, texto, wa, env, ahora = D
     return { anadir: [], pausa: undefined };
   }
   return {
-    anadir: [{ role: "assistant", content: `[Mensaje del equipo de Lavanda] ${texto}` }],
+    anadir: [{ role: "assistant", content: `${cliente.textos.ETIQUETA_EQUIPO} ${texto}` }],
     pausa: { desde: estado.pausa?.desde || ahora, ultimoDueno: ahora, motivo: estado.pausa?.motivo || "equipo" },
   };
 }

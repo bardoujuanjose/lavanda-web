@@ -16,8 +16,11 @@ WhatsApp:  cliente → Meta → /whatsapp → memoria ──┴→ Claude
 
 ## Archivos
 
-- `src/negocio.js`: **lo que saben los asistentes** (datos del negocio y normas de cada canal).
-  Si cambia algo del negocio, se edita aquí.
+- `src/clientes/lavanda.js`: **la ficha de Lavanda**: sus datos (nombre, teléfono, horario, precios, máquinas…).
+  Si cambia algo del negocio (un precio, el horario), se edita aquí. Ver `src/clientes/README.md`.
+- `src/negocio.js`: **la plantilla**: las normas de cada canal, comunes a todas las lavanderías, con huecos
+  que se rellenan con la ficha. `crearTextos(ficha)` monta todo lo que necesitan los asistentes.
+- `src/clientes/index.js`: dice qué ficha se usa (hoy solo Lavanda).
 - `src/index.js`: reparte las peticiones entre la web y WhatsApp.
 - `src/web.js`: el chat de la web.
 - `src/webhook.js`: recibe los mensajes de WhatsApp y comprueba que vienen de Meta.
@@ -69,7 +72,7 @@ mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lav
 
 - En Twilio, el número tiene configurado en **Voice → A call comes in**: Webhook
   `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (HTTP POST).
-- Las normas son las mismas que en WhatsApp (`PROCEDIMIENTOS` en `negocio.js`) con adaptaciones para
+- Las normas son las mismas que en WhatsApp (`PROCEDIMIENTOS` en la plantilla `negocio.js`) con adaptaciones para
   hablar (`INSTRUCCIONES_VOZ`).
 - En los casos en que WhatsApp diría "llama al 689 810 213", la llamada se pasa a `OWNER_PHONE`.
   Si no contesta en 25 s, se le dice al cliente que escriba por WhatsApp y el dueño recibe un aviso

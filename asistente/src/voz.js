@@ -10,9 +10,7 @@
 //            OWNER_PHONE (móvil al que se pasan las llamadas)
 // =====================================================================
 import Anthropic from "@anthropic-ai/sdk";
-import {
-  INSTRUCCIONES_VOZ, SALUDO_VOZ, HERRAMIENTA_AVISO, HERRAMIENTA_PASAR_LLAMADA,
-} from "./negocio.js";
+import { obtenerCliente } from "./clientes/index.js";
 import { normalizarTelefono, clienteWhatsApp } from "./whatsapp.js";
 import { avisarDueno, claveAviso } from "./asistente-whatsapp.js";
 
@@ -32,8 +30,7 @@ export const VOCES_PRUEBA = [
   "ElevenLabs|",
 ];
 const MAX_VUELTAS = 3;
-const NO_CONTESTA =
-  "Ahora mismo no podemos atenderte. Escríbenos por WhatsApp a este mismo número, el 689 810 213, y te ayudamos. Gracias por llamar a Lavanda.";
+// La frase de "no podemos atenderte" depende de la lavandería: está en sus textos (NO_CONTESTA_VOZ)
 
 // ---------------------------------------------------------------------
 //  Utilidades
@@ -106,6 +103,7 @@ async function comprobarFirma(request, env) {
 // ---------------------------------------------------------------------
 export async function atenderVoz(request, env, ctx) {
   const url = new URL(request.url);
+  const { textos } = obtenerCliente(env);
 
   if (url.pathname === "/voz/ws") return abrirConversacion(request, env, ctx);
   if (request.method !== "POST") return new Response("Método no permitido", { status: 405 });
@@ -126,7 +124,7 @@ export async function atenderVoz(request, env, ctx) {
     const atributos = {
       url: ws.toString(),
       language: env.VOZ_IDIOMA || "es-ES",
-      welcomeGreeting: SALUDO_VOZ,
+      welcomeGreeting: textos.SALUDO_VOZ,
       ttsProvider: env.VOZ_TTS_PROVIDER || "Amazon",
       voice: env.VOZ_VOZ || "Lucia-Neural",
     };
@@ -171,7 +169,7 @@ export async function atenderVoz(request, env, ctx) {
     }
     if (p.ErrorCode || p.SessionStatus === "failed") {
       console.error("Voz: la sesión de ConversationRelay falló:", p.ErrorCode, p.ErrorMessage);
-      return twiml(frase("noContesta", NO_CONTESTA, env, url) + "<Hangup/>");
+      return twiml(frase("noContesta", textos.NO_CONTESTA_VOZ, env, url) + "<Hangup/>");
     }
     return twiml("<Hangup/>");
   }
@@ -186,7 +184,7 @@ export async function atenderVoz(request, env, ctx) {
         motivo: "llamada_perdida", resumen: resumen || "Llamada que el asistente intentó pasarte.", maquina: "", importe: "", telefonoCliente: p.From,
       }).catch((e) => console.error("Voz: no se pudo avisar de la llamada perdida:", e.message)),
     );
-    return twiml(frase("noContesta", NO_CONTESTA, env, url) + "<Hangup/>");
+    return twiml(frase("noContesta", textos.NO_CONTESTA_VOZ, env, url) + "<Hangup/>");
   }
 
   return new Response("No encontrado", { status: 404 });
@@ -227,7 +225,10 @@ async function abrirConversacion(request, env, ctx) {
 }
 
 // Lógica de la conversación (independiente del WebSocket para poder probarla)
-export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora = () => Date.now() }) {
+export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora = () => Date.now(), cliente = obtenerCliente(env) }) {
+  const { ficha, textos } = cliente;
+  const HERRAMIENTA_AVISO = textos.HERRAMIENTA_AVISO;
+  const HERRAMIENTA_PASAR_LLAMADA = textos.HERRAMIENTA_PASAR_LLAMADA;
   const historial = [];
   const avisos = [];
   let llamante = "";
@@ -238,7 +239,7 @@ export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora 
   function sistema() {
     const ult3 = llamante.slice(-3).split("").join(" ");
     return (
-      `Hora actual en El Vendrell: ${new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(ahora()))}.` +
+      `${textos.HORA_ETIQUETA}: ${new Intl.DateTimeFormat("es-ES", { timeZone: ficha.zonaHoraria, weekday: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(ahora()))}.` +
       (llamante ? ` El cliente llama desde el +${llamante} (acaba en ${ult3}).` : " No se conoce el número del cliente.") +
       (avisos.length ? ` Avisos ya enviados en esta llamada (no los repitas): ${avisos.map((a) => a.motivo).join(", ")}.` : "")
     );
@@ -252,7 +253,7 @@ export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora 
     // Sonnet 5.5: "between_tools" = sin razonamiento previo (lo más rápido). Otros modelos: adaptativo.
     ...(modelo === "claude-sonnet-5-5" ? { thinking: { type: "between_tools" } } : {}),
     output_config: { effort: "low" },
-    system: [{ type: "text", text: INSTRUCCIONES_VOZ, cache_control: { type: "ephemeral" } }],
+    system: [{ type: "text", text: textos.INSTRUCCIONES_VOZ, cache_control: { type: "ephemeral" } }],
     tools: [HERRAMIENTA_AVISO, HERRAMIENTA_PASAR_LLAMADA],
   };
 
