@@ -5,7 +5,7 @@
 import { DurableObject } from "cloudflare:workers";
 import Anthropic from "@anthropic-ai/sdk";
 import { clienteWhatsApp } from "./whatsapp.js";
-import { obtenerCliente, entornoDe } from "./clientes/index.js";
+import { obtenerCliente, entornoDe, prepararRegistro } from "./clientes/index.js";
 import {
   ESPERA_MS, estadoInicial, procesarPendientes, aplicarResultado, comandoDueno,
 } from "./asistente-whatsapp.js";
@@ -69,6 +69,7 @@ export class Conversacion extends DurableObject {
     await this.ctx.storage.put("pendientes", []);
     const telefono = await this.ctx.storage.get("telefono");
     const nombre = (await this.ctx.storage.get("nombre")) || "";
+    await prepararRegistro(this.env);   // por si es una lavandería dada de alta en el panel
     const cliente = obtenerCliente(this.env, (await this.ctx.storage.get("cliente")) || undefined);
     const env = entornoDe(this.env, cliente);   // el token, el número y el dueño de ESA lavandería
     const wa = clienteWhatsApp(env);
@@ -106,6 +107,7 @@ export class Conversacion extends DurableObject {
 
   // El dueño escribe "#telefono texto" o "#telefono fin"
   async dueno(telefono, texto, clienteId) {
+    await prepararRegistro(this.env);
     const cliente = obtenerCliente(this.env, clienteId);
     const env = entornoDe(this.env, cliente);
     const resultado = await comandoDueno({

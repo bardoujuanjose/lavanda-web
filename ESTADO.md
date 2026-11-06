@@ -57,8 +57,11 @@ Las normas de incidencias y dinero también van en la ficha (`normas`), porque c
 la web de origen (chat) y el número de Twilio al que llaman (voz); cada una con sus secretos, su dueño y su memoria de
 clientes (las conversaciones actuales de Lavanda se conservan). Probado con peticiones simuladas y dos lavanderías;
 **sin desplegar** y sin probar aún con una segunda lavandería real. Con una sola (hoy) todo funciona como antes.
-Pendiente: fichas en base de datos (hoy son archivos), alta de WhatsApp por el registro integrado de Meta, modelos de
-cobro reutilizables cuando haya 2-3 lavanderías reales, panel y cobro.
+**Panel `/admin`** (contraseña `ADMIN_CLAVE`): alta y edición de lavanderías en una base de datos (Durable Object
+`Registro`), conexión de su WhatsApp (token cifrado con `CLAVE_CIFRADO`) y activación con comprobaciones. Lavanda
+sigue siendo fija en el código. **Antes de desplegar:** crear los secretos `ADMIN_CLAVE` y `CLAVE_CIFRADO`.
+Pendiente: alta de WhatsApp por el registro integrado de Meta (hoy el token se pega a mano), modelos de cobro
+reutilizables cuando haya 2-3 lavanderías reales, cobro de la suscripción.
 
 ## Próxima tarea: publicaciones de Instagram (@lavandavendrell)
 

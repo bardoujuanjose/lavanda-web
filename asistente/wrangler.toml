@@ -20,6 +20,15 @@ class_name = "Conversacion"
 tag = "v1"
 new_sqlite_classes = ["Conversacion"]
 
+# Fichas de las lavanderías dadas de alta en el panel /admin (una sola instancia)
+[[durable_objects.bindings]]
+name = "REGISTRO"
+class_name = "Registro"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Registro"]
+
 # Transcripción de audios de WhatsApp (Workers AI, plan gratuito)
 [ai]
 binding = "AI"
@@ -45,6 +54,9 @@ OWNER_TEMPLATE_LANG = "es"
 #   WHATSAPP_APP_SECRET    "App secret" de la app de Meta
 #   WHATSAPP_VERIFY_TOKEN  palabra secreta que inventas para conectar Meta
 #   OWNER_PHONE            tu móvil personal (donde recibes los avisos)
+#   ADMIN_CLAVE            contraseña del panel /admin
+#   CLAVE_CIFRADO          clave (mínimo 16 caracteres) para cifrar los tokens de WhatsApp de cada lavandería.
+#                          Si se cambia, los tokens guardados dejan de poder leerse.
 
 # Archivos públicos (frases grabadas con la voz del asistente), en https://…/audio/…
 [assets]

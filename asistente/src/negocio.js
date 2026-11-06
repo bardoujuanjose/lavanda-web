@@ -179,7 +179,8 @@ export function validarFicha(f) {
     ...DATOS_OBLIGATORIOS.filter((k) => !f?.[k] || typeof f[k] !== "string"),
     ...SECCIONES_OBLIGATORIAS.filter((k) => !f?.conocimiento?.[k]).map((k) => `conocimiento.${k}`),
     ...NORMAS_OBLIGATORIAS.filter((k) => !f?.normas?.[k]).map((k) => `normas.${k}`),
-    ...["phoneId", "token", "dueno"].filter((k) => !f?.secretos?.[k]).map((k) => `secretos.${k}`),
+    // Fichas fijas: nombres de sus secretos. Las de la base de datos llevan su conexión cifrada (o aún nada: borrador).
+    ...(f?.secretos ? ["phoneId", "token", "dueno"].filter((k) => !f.secretos[k]).map((k) => `secretos.${k}`) : []),
     ...(Array.isArray(f?.numerosVoz) ? [] : ["numerosVoz"]),
     ...(Array.isArray(f?.origenesPermitidos) && f.origenesPermitidos.length ? [] : ["origenesPermitidos"]),
     ...(f?.normas?.motivosAviso?.length ? [] : ["normas.motivosAviso"]),

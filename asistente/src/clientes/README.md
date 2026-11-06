@@ -53,18 +53,37 @@ nada por un fallo de configuración.
 La memoria de los clientes de WhatsApp es **por lavandería**: la misma persona escribiendo a dos lavanderías tiene
 dos conversaciones separadas. Las conversaciones que ya existen de Lavanda se conservan tal cual.
 
-## Dar de alta una lavandería nueva
+## Dar de alta una lavandería nueva: el panel `/admin`
 
-1. **Ficha:** copiar `lavanda.js` a `clientes/<id>.js`, cambiar la constante y rellenar todos sus datos, textos y
-   `normas` con los de esa lavandería.
-2. **Registrarla:** añadirla en `clientes/index.js` (o con `registrarCliente`, que la valida al momento).
-3. **Secretos en Cloudflare** (Settings → Variables and Secrets), con los nombres que puso en `secretos`:
-   el identificador de su número de WhatsApp, su token y el móvil del dueño.
-4. **WhatsApp (Meta):** su número tiene que estar en la app de Meta de la que cuelga este servidor, con el
-   webhook `/whatsapp` activado, y tener creada su plantilla de avisos (nombre en `plantillaAviso`).
-5. **Voz (Twilio):** comprar un número, apuntarlo en `numerosVoz` y configurar en él el webhook `/voz`.
-6. **Web:** poner el chat en su página y su dominio en `origenesPermitidos`.
-7. `npm test` (la ficha se valida sola) y desplegar.
+`https://lavanda-asistente.bardoujuanjose.workers.dev/admin` (contraseña: secreto `ADMIN_CLAVE`).
+
+1. **+ Nueva lavandería.** El formulario viene relleno con las secciones y normas de Lavanda como punto de
+   partida: hay que cambiarlas por las de esa lavandería (sobre todo cómo cobra y cómo devuelve el dinero).
+   **Vista previa** enseña las instrucciones que tendrían sus asistentes. Al guardar se valida todo y se avisa si
+   quedan datos de otra lavandería (copiar y pegar). Se guarda como **borrador**: no afecta a nada.
+2. **Conexión de WhatsApp:** identificador de su número (Meta), móvil del dueño y token. El token se guarda
+   **cifrado** (secreto `CLAVE_CIFRADO`) y el panel no lo vuelve a enseñar.
+3. **WhatsApp en Meta:** su número tiene que estar en la app de Meta de este servidor, con el webhook `/whatsapp`
+   activado y su plantilla de avisos creada (nombre en la ficha).
+4. **Voz (opcional):** comprar un número en Twilio, ponerlo en la ficha y configurar en él el webhook `/voz`.
+5. **Web (opcional):** poner el chat en su página y su dominio en la ficha.
+6. **Activar** desde la lista. Antes se comprueba que esté conectada y que no choque con otra (mismo número de
+   WhatsApp, de voz o la misma web). Si algo afecta a otra lavandería, se avisa.
+
+Las fichas de la base de datos se recargan en el servidor cada 30 segundos: un cambio puede tardar eso en notarse.
+Lavanda es **fija** (archivo `lavanda.js`): se ve en el panel pero se cambia en el código.
+
+### Secretos que necesita el panel (Cloudflare → Settings → Variables and Secrets)
+
+| Secreto | Qué es |
+|---|---|
+| `ADMIN_CLAVE` | Contraseña del panel. Larga y distinta de `PRUEBA_CLAVE`. Tras 10 intentos fallidos, se bloquea 10 minutos. |
+| `CLAVE_CIFRADO` | Clave para cifrar los tokens (mínimo 16 caracteres, mejor 32 al azar). **No se puede cambiar** sin volver a conectar todos los WhatsApp. |
+
+### Dar de alta una lavandería FIJA (en el código, como Lavanda)
+
+Solo si hace falta: copiar `lavanda.js`, cambiar sus datos, añadirla a `FICHAS_FIJAS` en `clientes/index.js`,
+poner sus secretos en Cloudflare con los nombres de `secretos`, `npm test` y desplegar.
 
 > ⚠️ **Al añadir la segunda lavandería, Lavanda deja de ser "la única".** A partir de ese momento hay que tener
 > en la ficha de Lavanda su número de Twilio en `numerosVoz` (si no, sus llamadas se rechazan) y el secreto
@@ -95,10 +114,8 @@ Ejemplo de otro modo de cobro (tarjeta, devolución a la tarjeta, sin Bizum): `t
   No se hace antes de ver casos reales para no inventar una estructura que luego no sirva.
 - **La regla de dinero de Lavanda** (límite de 20 €, 48 h, ejemplos con las máquinas 3 y 4) está escrita dentro de
   `procedimientos`; es de Lavanda y no se aplica a otras.
-- **Las fichas siguen siendo archivos del código.** Dar de alta una lavandería exige tocar el repositorio y volver
-  a desplegar. Lo siguiente es cargarlas de una base de datos (el registro ya lo permite con `registrarCliente`).
-- **Los tokens de WhatsApp de cada lavandería se guardan como secretos a mano.** Con muchas, lo normal es el
-  "registro integrado" de Meta (el dueño conecta su número él mismo) y guardar su token cifrado en la base de datos.
+- **El token de WhatsApp se copia a mano en el panel.** Lo siguiente: el "registro integrado" de Meta (el dueño
+  conecta su número con un botón y el token llega solo).
 - **Siguen siendo comunes a todas:** la clave de Claude, la app de Meta (`WHATSAPP_APP_SECRET`, token de
   verificación), la cuenta de Twilio y la voz de ElevenLabs.
 - **Pruebas con servicios reales:** el enrutado está probado con peticiones simuladas. Falta probarlo con una

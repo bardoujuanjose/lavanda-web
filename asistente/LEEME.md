@@ -6,6 +6,7 @@ Un mismo servidor (Cloudflare Worker) con dos asistentes que usan Claude:
 |---|---|---|
 | Chat de la web | `/chat` | Solo informa. Los problemas los manda a WhatsApp. |
 | WhatsApp (689 81 02 13) | `/whatsapp` | Informa, entiende fotos, gestiona incidencias y avisa al dueño. |
+| Panel de lavanderías | `/admin` | Alta, edición, conexión y activación de lavanderías (contraseña `ADMIN_CLAVE`). |
 | Teléfono (Twilio) | `/voz` | Mismas normas que WhatsApp, hablando. Pasa la llamada al dueño en los casos difíciles. |
 
 ```
@@ -60,6 +61,8 @@ mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lav
 | `WHATSAPP_APP_SECRET` | "App secret" de la app de Meta |
 | `WHATSAPP_VERIFY_TOKEN` | Palabra secreta inventada para conectar Meta |
 | `OWNER_PHONE` | Móvil personal del dueño (recibe los avisos) |
+| `ADMIN_CLAVE` | Contraseña del panel `/admin` |
+| `CLAVE_CIFRADO` | Clave para cifrar los tokens de WhatsApp de las demás lavanderías (mín. 16 caracteres; no cambiarla) |
 
 **Nunca** se escriben en ningún archivo del proyecto (el repositorio es público).
 

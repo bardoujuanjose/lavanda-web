@@ -4,17 +4,24 @@
 //   /whatsapp  -> mensajes de WhatsApp (Meta)
 //   /voz       -> llamadas de teléfono (Twilio)
 //   /prueba    -> chat de pruebas del asistente de WhatsApp (con contraseña)
+//   /admin     -> panel para dar de alta y editar lavanderías (con contraseña)
 // =====================================================================
 import { atenderChatWeb } from "./web.js";
 import { atenderWhatsApp } from "./webhook.js";
 import { atenderPrueba } from "./prueba.js";
 import { atenderVoz } from "./voz.js";
+import { atenderAdmin } from "./admin.js";
+import { prepararRegistro } from "./clientes/index.js";
 
 export { Conversacion } from "./conversacion.js";
+export { Registro } from "./registro.js";
 
 export default {
   async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
+    // Lavanderías dadas de alta en el panel (con caché; si falla, se sigue con las que había)
+    await prepararRegistro(env);
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) return atenderAdmin(request, env);
     if (pathname === "/chat") return atenderChatWeb(request, env);
     if (pathname === "/whatsapp") return atenderWhatsApp(request, env);
     if (pathname === "/voz" || pathname.startsWith("/voz/")) return atenderVoz(request, env, ctx);
