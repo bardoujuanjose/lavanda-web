@@ -4,7 +4,9 @@ Resumen para retomar el trabajo en una conversación nueva.
 Lavanda: lavandería autoservicio, Avda. Baix Penedès 33, 43700 El Vendrell.
 Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou (Juanjo).
 
-## Qué hay funcionando
+## Cómo se publica el Worker: Cloudflare Workers Builds conectado a GitHub (bardoujuanjose/lavanda-web), rama de producción main, directorio raíz asistente, comando npx wrangler deploy. Fusionar en main publica. Las ramas dan error en la vista previa de Cloudflare (falta el bloque [previews] en wrangler.toml); no afecta a producción.
+
+Qué hay funcionando
 
 | Pieza | Dónde | Notas |
 |---|---|---|
@@ -21,7 +23,7 @@ Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou
 | Google Search Console | Propiedad de dominio lavandavendrell.es | Verificada (TXT google-site-verification en DonDominio, no borrar). Sitemap enviado, indexación solicitada. Web con datos estructurados (Laundromat), sitemap.xml y robots.txt. |
 
 Secretos (en Cloudflare, nunca en el repo): ANTHROPIC_API_KEY, WHATSAPP_TOKEN, WHATSAPP_PHONE_ID,
-WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN.
+WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, ADMIN_CLAVE, CLAVE_CIFRADO (estos dos creados el 06/11/2026).
 
 ## Pendiente
 
@@ -56,10 +58,10 @@ Las normas de incidencias y dinero también van en la ficha (`normas`), porque c
 (cajero, tarjeta, app…). Cada lavandería tiene **su propio número de WhatsApp**: el sistema elige la ficha por el número al que escriben (WhatsApp),
 la web de origen (chat) y el número de Twilio al que llaman (voz); cada una con sus secretos, su dueño y su memoria de
 clientes (las conversaciones actuales de Lavanda se conservan). Probado con peticiones simuladas y dos lavanderías;
-**sin desplegar** y sin probar aún con una segunda lavandería real. Con una sola (hoy) todo funciona como antes.
+**desplegado en producción el 06/11/2026** (PR nº 1 fusionada en main; Lavanda sigue contestando bien por WhatsApp y /admin abre con `ADMIN_CLAVE`), sin probar aún con una segunda lavandería real. Con una sola (hoy) todo funciona como antes.
 **Panel `/admin`** (contraseña `ADMIN_CLAVE`): alta y edición de lavanderías en una base de datos (Durable Object
 `Registro`), conexión de su WhatsApp (token cifrado con `CLAVE_CIFRADO`) y activación con comprobaciones. Lavanda
-sigue siendo fija en el código. **Antes de desplegar:** crear los secretos `ADMIN_CLAVE` y `CLAVE_CIFRADO`.
+sigue siendo fija en el código. Secretos `ADMIN_CLAVE` y `CLAVE_CIFRADO` ya creados en Cloudflare (no cambiar `CLAVE_CIFRADO`).
 **Alta de WhatsApp por el dueño** (`/alta/…`, registro integrado de Meta v4): el panel genera un enlace; el dueño
 conecta su número con su Facebook, también si ya usa la app WhatsApp Business ("coexistencia": cuando contesta
 desde la app, el asistente se calla con ese cliente). Probado con Meta simulado y en navegador, **no con Meta real**.
