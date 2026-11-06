@@ -52,8 +52,10 @@ empresa de Juanjo, no de Carmen) al que cada cliente desvía su teléfono; `Forw
 
 Hecho: los textos de los asistentes ya son una **plantilla + una ficha por lavandería** (`asistente/src/clientes/`,
 ver su README). Lavanda se comporta igual que antes (hay una prueba que lo comprueba letra por letra).
-Pendiente para atender a varias: elegir la ficha según número llamado / número de WhatsApp / web; sacar a la ficha las
-normas de dinero, el móvil del dueño y las credenciales de WhatsApp; panel y cobro.
+Las normas de incidencias y dinero también van en la ficha (`normas`), porque cambian según cómo cobra cada local
+(cajero, tarjeta, app…). Pendiente para atender a varias: elegir la ficha según número llamado / número de WhatsApp / web;
+modelos de cobro reutilizables cuando haya 2-3 lavanderías reales; móvil del dueño y credenciales de WhatsApp por
+lavandería; panel y cobro.
 
 ## Próxima tarea: publicaciones de Instagram (@lavandavendrell)
 

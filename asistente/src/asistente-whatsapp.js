@@ -28,9 +28,10 @@ export function claveAviso(datos) {
   return [datos.motivo, cifras(datos.telefono), cifras(datos.importe), cifras(datos.maquina)].join("|");
 }
 
-function describirAviso(a) {
-  const nombres = { bizum: "Bizum", servicio_personalizado: "servicio personalizado", justificante_factura: "justificante/factura" };
-  return [nombres[a.motivo] || a.motivo, a.maquina && `máquina ${a.maquina}`, a.importe, a.telefono && `tel. ${a.telefono}`]
+// Los motivos de aviso (Bizum, devolución, justificante…) dependen de la lavandería: están en su ficha
+function describirAviso(a, motivos) {
+  const nombre = motivos.find((m) => m.clave === a.motivo)?.nombre;
+  return [nombre || a.motivo, a.maquina && `máquina ${a.maquina}`, a.importe, a.telefono && `tel. ${a.telefono}`]
     .filter(Boolean).join(", ");
 }
 
@@ -94,13 +95,11 @@ export function resumirPendientes(pendientes) {
 // ---------------------------------------------------------------------
 //  Avisar al dueño por WhatsApp
 // ---------------------------------------------------------------------
-export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, importe, telefonoCliente }) {
+export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, importe, telefonoCliente, cliente = obtenerCliente(env) }) {
   const dueno = normalizarTelefono(env.OWNER_PHONE);
   if (!dueno) throw new Error("Falta OWNER_PHONE");
   const titulos = {
-    bizum: "💸 *Bizum pendiente de verificar*",
-    servicio_personalizado: "🏡 *Servicio personalizado*",
-    justificante_factura: "🧾 *Justificante / factura*",
+    ...Object.fromEntries(cliente.ficha.normas.motivosAviso.map((m) => [m.clave, m.titulo])),
     llamada_perdida: "📞 *Llamada perdida (no contestaste)*",
     otro: "📌 *Aviso*",
   };
@@ -220,7 +219,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
         `${textos.HORA_ETIQUETA}: ${horaActual(ahora, ficha.zonaHoraria)}.` +
         (nombre ? ` Nombre del cliente en WhatsApp: ${nombre}.` : "") +
         (avisosPrevios.length
-          ? ` Avisos YA enviados al equipo en esta conversación (no los repitas): ${avisosPrevios.map(describirAviso).join("; ")}.`
+          ? ` Avisos YA enviados al equipo en esta conversación (no los repitas): ${avisosPrevios.map((a) => describirAviso(a, ficha.normas.motivosAviso)).join("; ")}.`
           : " Todavía no se ha enviado ningún aviso al equipo en esta conversación."),
     },
   ];
@@ -269,7 +268,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
             continue;
           }
           await avisarDueno({
-            env, wa, telefono, nombre,
+            env, wa, telefono, nombre, cliente,
             motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, importe: datos.importe, telefonoCliente: datos.telefono,
           });
           enviadosAhora.push({

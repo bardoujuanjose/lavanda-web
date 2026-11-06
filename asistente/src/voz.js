@@ -103,7 +103,8 @@ async function comprobarFirma(request, env) {
 // ---------------------------------------------------------------------
 export async function atenderVoz(request, env, ctx) {
   const url = new URL(request.url);
-  const { textos } = obtenerCliente(env);
+  const cliente = obtenerCliente(env);
+  const { textos } = cliente;
 
   if (url.pathname === "/voz/ws") return abrirConversacion(request, env, ctx);
   if (request.method !== "POST") return new Response("Método no permitido", { status: 405 });
@@ -180,7 +181,7 @@ export async function atenderVoz(request, env, ctx) {
     const resumen = url.searchParams.get("r") || "";
     ctx?.waitUntil?.(
       avisarDueno({
-        env, wa: clienteWhatsApp(env), telefono: normalizarTelefono(p.From), nombre: "",
+        env, cliente, wa: clienteWhatsApp(env), telefono: normalizarTelefono(p.From), nombre: "",
         motivo: "llamada_perdida", resumen: resumen || "Llamada que el asistente intentó pasarte.", maquina: "", importe: "", telefonoCliente: p.From,
       }).catch((e) => console.error("Voz: no se pudo avisar de la llamada perdida:", e.message)),
     );
@@ -339,7 +340,7 @@ export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora 
           } else {
             try {
               await avisarDueno({
-                env, wa, telefono: llamante, nombre: "📞 Llamada",
+                env, cliente, wa, telefono: llamante, nombre: "📞 Llamada",
                 motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, importe: datos.importe, telefonoCliente: datos.telefono,
               });
               avisos.push({ clave, motivo: datos.motivo });

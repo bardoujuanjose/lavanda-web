@@ -38,11 +38,20 @@ test("otra lavandería: sus datos aparecen en WhatsApp, web y voz, y no queda na
     assert.match(texto, /977 000 111/, clave);
     assert.match(texto, /Calle Mayor 5, Reus/, clave);
     assert.doesNotMatch(texto, /689 810 213|El Vendrell|lavandavendrell|Baix Penedès/, `${clave} conserva datos de Lavanda`);
+    // otro modo de cobro: nada del cajero de efectivo ni del Bizum de Lavanda
+    assert.doesNotMatch(texto, /Bizum|luz amarilla|cajero/i, `${clave} conserva normas de cobro de Lavanda`);
     assert.doesNotMatch(texto, /\{\{/, `${clave} tiene un hueco sin rellenar`);
   }
   assert.match(t.INSTRUCCIONES_WHATSAPP, /https:\/\/g\.page\/r\/PEPITO\/review/);
   assert.match(t.SALUDO_VOZ, /asistente virtual de Lavandería Pepito/);
   assert.match(t.HERRAMIENTA_AVISO.description, /equipo de Lavandería Pepito/);
+  assert.doesNotMatch(JSON.stringify(t.HERRAMIENTA_AVISO), /Bizum/);
+});
+
+test("los motivos de aviso salen de la ficha: cada lavandería tiene los suyos", () => {
+  const enumDe = (t) => t.HERRAMIENTA_AVISO.input_schema.properties.motivo.enum;
+  assert.deepEqual(enumDe(crearTextos(PEPITO)), ["devolucion"]);
+  assert.deepEqual(enumDe(crearTextos(FICHA_LAVANDA)), ["bizum", "servicio_personalizado", "justificante_factura"]);
 });
 
 test("una sección que no aplica (null) desaparece sin dejar el título", () => {
@@ -55,6 +64,9 @@ test("una ficha incompleta da un error claro en vez de un asistente a medias", (
   const { telefono, ...sinTelefono } = FICHA_LAVANDA;
   assert.throws(() => crearTextos(sinTelefono), /faltan telefono/);
   assert.throws(() => validarFicha({ ...FICHA_LAVANDA, conocimiento: { general: "x" } }), /conocimiento\.precios/);
+  const { procedimientos, ...sinProcedimientos } = FICHA_LAVANDA.normas;
+  assert.throws(() => crearTextos({ ...FICHA_LAVANDA, normas: sinProcedimientos }), /normas\.procedimientos/);
+  assert.throws(() => crearTextos({ ...FICHA_LAVANDA, normas: { ...FICHA_LAVANDA.normas, motivosAviso: [] } }), /normas\.motivosAviso/);
 });
 
 test("un hueco con un dato que no existe da error", () => {

@@ -21,6 +21,8 @@ clientes/index.js        registro: dice qué ficha usar (hoy solo hay una)
 | `horario` | Frase que se repite en muchos mensajes (`de 8:00 a 21:00`). |
 | `zonaHoraria` | Normalmente `Europe/Madrid`. |
 | `resenaUrl` | Enlace para pedir reseñas en Google. |
+| `equipoCobro` | Con qué se paga, en una frase corta: `del cajero`, `del lector de tarjetas`… |
+| `ejemploNoExiste` | Algo que el asistente no debe inventar (`no existe ninguna máquina de cambio`). |
 | `origenesPermitidos` | Webs desde las que se puede usar el chat. |
 | `conocimiento` | Una sección por tema: `general`, `precios`, `pago`, `lavadoras`, `secadora`, `permitido`, `consejos`, `fidelizacion`, `olvidada`. |
 
@@ -36,11 +38,31 @@ clientes/index.js        registro: dice qué ficha usar (hoy solo hay una)
 3. Añadirla a `FICHAS` en `clientes/index.js`.
 4. `npm test` (la ficha se valida sola).
 
-## Qué NO está todavía en la ficha (pendiente)
+## Las normas (`normas`): lo que cambia según cómo se cobra
 
-- **Las normas de dinero** (casos A–D: no arranca, cambio, Bizum, límite de 20 €, 48 horas) siguen en la
-  plantilla `PROCEDIMIENTOS` con los ejemplos de Lavanda (máquina 4 = 8 €, etc.). Valen tal cual para una
-  lavandería con el mismo sistema de cajero; para otra distinta hay que revisarlas y sacarlas a la ficha.
+Cada lavandería cobra de una forma (cajero de efectivo, tarjeta en cada máquina, app, fichas…) y resuelve
+los problemas de otra. Por eso las normas de incidencias **no son comunes**: se escriben en la ficha.
+
+| Campo de `normas` | Qué es |
+|---|---|
+| `procedimientos` | Problemas con máquinas, dinero, cambio y devoluciones; otros casos frecuentes; justificantes. Es lo que más cambia entre lavanderías. (WhatsApp y voz) |
+| `web` | El chat de la web solo informa: qué hace cuando hay un problema (normalmente, derivar). |
+| `whatsapp` | Cuándo sugerir llamar y qué no se puede prometer. |
+| `avisos` | Cuándo usar la herramienta que avisa al dueño. |
+| `voz` | Adaptaciones al hablar por teléfono (resolver dinero, pasar la llamada, decir teléfonos…). |
+| `motivosAviso` | Los motivos de aviso que existen (`bizum`, `devolucion`…) con el título del mensaje que recibe el dueño. |
+| `herramientaAviso` | Cuándo usarla y cómo se llaman el importe y el teléfono. |
+
+Ejemplo de otro modo de cobro (tarjeta, devolución a la tarjeta, sin Bizum): `test/fixtures/pepito.js`.
+
+## Qué NO está todavía resuelto (pendiente)
+
+- **Escribir las normas de una lavandería nueva es trabajo manual.** Lo previsto: cuando haya 2 o 3 lavanderías
+  reales con modos de cobro parecidos, sacar **modelos de cobro reutilizables** ("cajero de efectivo con Bizum",
+  "tarjeta en la máquina", "app"…) con un cuestionario de alta que los elija y rellene sus importes.
+  No se hace antes de ver casos reales para no inventar una estructura que luego no sirva.
+- **La regla de dinero de Lavanda** (límite de 20 €, 48 h, ejemplos con las máquinas 3 y 4) está escrita dentro de
+  `procedimientos`; es de Lavanda y no se aplica a otras.
 - **Qué ficha se usa en cada petición.** Hoy `obtenerCliente(env)` devuelve siempre Lavanda. Para varias
   lavanderías hay que elegirla según el número al que llaman (voz), el número de WhatsApp que recibe el
   mensaje o la web desde la que se escribe, y guardar las fichas en una base de datos en vez de en archivos.
