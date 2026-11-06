@@ -26,8 +26,9 @@ test("comprueba la firma de Twilio", async () => {
 test("una llamada nueva conecta con el asistente (voz de mujer, español)", async () => {
   const r = await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA1", From: "+34612345678" }), ENV);
   const t = await r.text();
-  assert.match(t, /<Connect action="https:\/\/x.dev\/voz\/fin">/);
-  assert.match(t, /<ConversationRelay url="wss:\/\/x.dev\/voz\/ws\?c=CA1&amp;t=[0-9a-f]{32}"/);
+  // la lavandería (k) viaja en la conexión en directo y en la dirección a la que Twilio vuelve al terminar
+  assert.match(t, /<Connect action="https:\/\/x.dev\/voz\/fin\?k=lavanda">/);
+  assert.match(t, /<ConversationRelay url="wss:\/\/x.dev\/voz\/ws\?c=CA1&amp;k=lavanda&amp;t=[0-9a-f]{32}"/);
   assert.match(t, /language="es-ES"/);
   assert.match(t, /voice="Lucia-Neural"/);
   assert.match(t, /welcomeGreeting="¡Hola!… Soy el asistente virtual de Lavanda/);
@@ -185,10 +186,12 @@ test("al empezar la llamada precarga las normas con los mismos ajustes que las r
 test("la llamada de prueba puede simular el número del cliente", async () => {
   const r = await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA9", From: "client:prueba-lavanda", TelefonoPrueba: "612 345 678" }), ENV);
   const t = await r.text();
-  assert.match(t, /c=CA9&amp;n=34612345678&amp;t=/);
+  assert.match(t, /c=CA9&amp;k=lavanda&amp;n=34612345678&amp;t=/);
   // un número cambiado a mano invalida el pase
   const pase = await paseLlamada(ENV, "CA9", "34612345678");
   assert.notEqual(pase, await paseLlamada(ENV, "CA9", "34699999999"));
+  // y también cambiar la lavandería a mano
+  assert.notEqual(await paseLlamada(ENV, "CA9", "34612345678", "pepito"), await paseLlamada(ENV, "CA9", "34612345678", "lavanda"));
   // la sesión usa ese número como si fuera el del llamante
   const claude = claudeFalso([texto("Vale.")]);
   const s = crearSesion({ env: ENV, claude, wa: {}, enviar: () => {}, numeroPrueba: "34612345678" });

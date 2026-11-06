@@ -3,6 +3,7 @@
 // =====================================================================
 import { firmaValida, extraerMensajes, normalizarTelefono, clienteWhatsApp } from "./whatsapp.js";
 import { leerComandoDueno, textoAyudaDueno } from "./asistente-whatsapp.js";
+import { buscarClientePorWhatsApp, entornoDe, nombreMemoria } from "./clientes/index.js";
 
 export async function atenderWhatsApp(request, env) {
   const url = new URL(request.url);
@@ -29,23 +30,30 @@ export async function atenderWhatsApp(request, env) {
   let payload;
   try { payload = JSON.parse(new TextDecoder().decode(cuerpo)); } catch { return new Response("JSON no válido", { status: 400 }); }
 
-  // 3) Repartir cada mensaje a la memoria de su cliente
-  const dueno = normalizarTelefono(env.OWNER_PHONE);
+  // 3) Repartir cada mensaje a la memoria de su cliente, según el número de WhatsApp al que han escrito
+  //    (cada lavandería tiene el suyo, con su token y su dueño)
   for (const m of extraerMensajes(payload)) {
     try {
+      const cliente = buscarClientePorWhatsApp(env, m.numeroId);
+      if (!cliente) {
+        console.error(`WhatsApp: mensaje para el número ${m.numeroId || "(sin identificar)"}, que no es de ninguna lavandería: se ignora`);
+        continue;
+      }
+      const envC = entornoDe(env, cliente);
+      const dueno = normalizarTelefono(envC.OWNER_PHONE);
       if (dueno && m.de === dueno) {
         const comando = leerComandoDueno(m.texto);
         if (comando) {
-          await conversacion(env, comando.telefono).dueno(comando.telefono, comando.texto);
+          await conversacion(env, cliente, comando.telefono).dueno(comando.telefono, comando.texto, cliente.ficha.id);
           continue;
         }
         if (/^\s*(ayuda|help|\?)\s*$/i.test(m.texto)) {
-          await clienteWhatsApp(env).enviarTexto(dueno, textoAyudaDueno());
+          await clienteWhatsApp(envC).enviarTexto(dueno, textoAyudaDueno(cliente));
           continue;
         }
         // Cualquier otro mensaje del dueño se trata como el de un cliente (sirve para probar)
       }
-      await conversacion(env, m.de).recibir(m);
+      await conversacion(env, cliente, m.de).recibir(m, cliente.ficha.id);
     } catch (e) {
       console.error("WhatsApp: no se pudo procesar un mensaje:", e?.message || e);
     }
@@ -55,6 +63,8 @@ export async function atenderWhatsApp(request, env) {
   return new Response("ok", { status: 200 });
 }
 
-function conversacion(env, telefono) {
-  return env.CONVERSACIONES.get(env.CONVERSACIONES.idFromName(telefono));
+// La memoria es de cada cliente DE CADA lavandería: la misma persona escribiendo a dos lavanderías
+// tiene dos conversaciones separadas (nombreMemoria pone delante el prefijo de la lavandería).
+function conversacion(env, cliente, telefono) {
+  return env.CONVERSACIONES.get(env.CONVERSACIONES.idFromName(nombreMemoria(cliente, telefono)));
 }

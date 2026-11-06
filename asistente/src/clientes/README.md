@@ -24,6 +24,10 @@ clientes/index.js        registro: dice qué ficha usar (hoy solo hay una)
 | `equipoCobro` | Con qué se paga, en una frase corta: `del cajero`, `del lector de tarjetas`… |
 | `ejemploNoExiste` | Algo que el asistente no debe inventar (`no existe ninguna máquina de cambio`). |
 | `origenesPermitidos` | Webs desde las que se puede usar el chat. |
+| `secretos` | **Nombres** de los secretos de Cloudflare con su `phoneId` de WhatsApp, su `token` y el móvil del `dueno`. Nunca los valores: el repositorio es público. |
+| `numerosVoz` | Números de Twilio por los que reciben llamadas (`+34…`). Con varias lavanderías, una llamada a un número que no figura aquí no se atiende. |
+| `plantillaAviso` | (Opcional) Plantilla de Meta para avisar al dueño pasadas 24 h. Es de la cuenta de WhatsApp de cada lavandería. |
+| `prefijoMemoria` | (Opcional) Solo Lavanda lo usa (`""`) para no perder las conversaciones que ya tiene guardadas. Las demás no lo ponen. |
 | `conocimiento` | Una sección por tema: `general`, `precios`, `pago`, `lavadoras`, `secadora`, `permitido`, `consejos`, `fidelizacion`, `olvidada`. |
 
 - `general`, `precios` y `pago` son obligatorias. Las demás pueden ser `null` si no aplican
@@ -31,12 +35,40 @@ clientes/index.js        registro: dice qué ficha usar (hoy solo hay una)
 - Los textos pueden llevar huecos como `{{telefono}}` o `{{horario}}`: se rellenan con los datos de arriba.
   Si un hueco usa un dato que no existe, **da error al arrancar** en vez de dejar un asistente a medias.
 
+## Cómo se sabe de qué lavandería es cada cosa
+
+Cada lavandería tiene **su propio número de WhatsApp**, su web y su teléfono de voz. El sistema las reconoce así
+(`clientes/index.js`):
+
+| Canal | Se reconoce por | Si no se reconoce |
+|---|---|---|
+| WhatsApp | El número de WhatsApp al que han escrito (Meta lo incluye en cada aviso). | Se ignora el mensaje y se anota en el registro. |
+| Web | La página desde la que escriben. | 403, sin datos de ninguna lavandería. |
+| Voz | El número de Twilio al que llaman. | Mensaje de "número no disponible" y se cuelga. |
+
+**Regla de seguridad:** con varias lavanderías, algo que no se reconoce **no se atiende nunca** (no se contesta
+con los datos de otra). Con **una sola**, se atiende con ella aunque no coincida, como hasta ahora, para no cortar
+nada por un fallo de configuración.
+
+La memoria de los clientes de WhatsApp es **por lavandería**: la misma persona escribiendo a dos lavanderías tiene
+dos conversaciones separadas. Las conversaciones que ya existen de Lavanda se conservan tal cual.
+
 ## Dar de alta una lavandería nueva
 
-1. Copiar `lavanda.js` a `clientes/<id>.js` y cambiar el nombre de la constante.
-2. Rellenar todos los datos y cada sección de `conocimiento` **con los de esa lavandería**.
-3. Añadirla a `FICHAS` en `clientes/index.js`.
-4. `npm test` (la ficha se valida sola).
+1. **Ficha:** copiar `lavanda.js` a `clientes/<id>.js`, cambiar la constante y rellenar todos sus datos, textos y
+   `normas` con los de esa lavandería.
+2. **Registrarla:** añadirla en `clientes/index.js` (o con `registrarCliente`, que la valida al momento).
+3. **Secretos en Cloudflare** (Settings → Variables and Secrets), con los nombres que puso en `secretos`:
+   el identificador de su número de WhatsApp, su token y el móvil del dueño.
+4. **WhatsApp (Meta):** su número tiene que estar en la app de Meta de la que cuelga este servidor, con el
+   webhook `/whatsapp` activado, y tener creada su plantilla de avisos (nombre en `plantillaAviso`).
+5. **Voz (Twilio):** comprar un número, apuntarlo en `numerosVoz` y configurar en él el webhook `/voz`.
+6. **Web:** poner el chat en su página y su dominio en `origenesPermitidos`.
+7. `npm test` (la ficha se valida sola) y desplegar.
+
+> ⚠️ **Al añadir la segunda lavandería, Lavanda deja de ser "la única".** A partir de ese momento hay que tener
+> en la ficha de Lavanda su número de Twilio en `numerosVoz` (si no, sus llamadas se rechazan) y el secreto
+> `WHATSAPP_PHONE_ID` bien puesto (si no, sus mensajes se ignoran). Compruébalo antes de desplegar.
 
 ## Las normas (`normas`): lo que cambia según cómo se cobra
 
@@ -63,8 +95,11 @@ Ejemplo de otro modo de cobro (tarjeta, devolución a la tarjeta, sin Bizum): `t
   No se hace antes de ver casos reales para no inventar una estructura que luego no sirva.
 - **La regla de dinero de Lavanda** (límite de 20 €, 48 h, ejemplos con las máquinas 3 y 4) está escrita dentro de
   `procedimientos`; es de Lavanda y no se aplica a otras.
-- **Qué ficha se usa en cada petición.** Hoy `obtenerCliente(env)` devuelve siempre Lavanda. Para varias
-  lavanderías hay que elegirla según el número al que llaman (voz), el número de WhatsApp que recibe el
-  mensaje o la web desde la que se escribe, y guardar las fichas en una base de datos en vez de en archivos.
-- **Datos por lavandería que siguen siendo del servidor:** móvil del dueño (`OWNER_PHONE`), credenciales de
-  WhatsApp (`WHATSAPP_*`), nombre de la plantilla de avisos de Meta y voz de ElevenLabs.
+- **Las fichas siguen siendo archivos del código.** Dar de alta una lavandería exige tocar el repositorio y volver
+  a desplegar. Lo siguiente es cargarlas de una base de datos (el registro ya lo permite con `registrarCliente`).
+- **Los tokens de WhatsApp de cada lavandería se guardan como secretos a mano.** Con muchas, lo normal es el
+  "registro integrado" de Meta (el dueño conecta su número él mismo) y guardar su token cifrado en la base de datos.
+- **Siguen siendo comunes a todas:** la clave de Claude, la app de Meta (`WHATSAPP_APP_SECRET`, token de
+  verificación), la cuenta de Twilio y la voz de ElevenLabs.
+- **Pruebas con servicios reales:** el enrutado está probado con peticiones simuladas. Falta probarlo con una
+  segunda lavandería de verdad (un segundo número de WhatsApp y un número de Twilio).

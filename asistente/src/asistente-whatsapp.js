@@ -123,7 +123,9 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
     // Han pasado más de 24 h desde tu último mensaje al número del negocio: Meta exige una plantilla aprobada
     const linea = `${(titulos[motivo] || titulos.otro).replace(/[*]/g, "")} - ${nombre || "Cliente"} (${bonito(telefono)})${maquina ? " - máquina " + maquina : ""}: ${resumen}${importe ? " - importe " + importe : ""}${telefonoCliente ? " - teléfono " + telefonoCliente : ""}`
       .replace(/\s+/g, " ").slice(0, 900);
-    await wa.enviarPlantilla(dueno, env.OWNER_TEMPLATE || "aviso_lavanda", env.OWNER_TEMPLATE_LANG || "es", [linea]);
+    // La plantilla de aviso es de la cuenta de WhatsApp de cada lavandería: si la ficha no dice otra, la de siempre
+    const plantilla = cliente.ficha.plantillaAviso;
+    await wa.enviarPlantilla(dueno, plantilla?.nombre || env.OWNER_TEMPLATE || "aviso_lavanda", plantilla?.idioma || env.OWNER_TEMPLATE_LANG || "es", [linea]);
   }
 }
 

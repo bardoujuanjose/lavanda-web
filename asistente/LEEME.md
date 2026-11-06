@@ -20,7 +20,8 @@ WhatsApp:  cliente → Meta → /whatsapp → memoria ──┴→ Claude
   Si cambia algo del negocio (un precio, el horario), se edita aquí. Ver `src/clientes/README.md`.
 - `src/negocio.js`: **la plantilla**: las normas de cada canal, comunes a todas las lavanderías, con huecos
   que se rellenan con la ficha. `crearTextos(ficha)` monta todo lo que necesitan los asistentes.
-- `src/clientes/index.js`: dice qué ficha se usa (hoy solo Lavanda).
+- `src/clientes/index.js`: **reconoce de qué lavandería es** cada mensaje de WhatsApp (por su número), cada web (por su
+  dominio) y cada llamada (por su número de Twilio). Hoy solo hay una (Lavanda); cada nueva tiene su ficha y su número.
 - `src/index.js`: reparte las peticiones entre la web y WhatsApp.
 - `src/web.js`: el chat de la web.
 - `src/webhook.js`: recibe los mensajes de WhatsApp y comprueba que vienen de Meta.

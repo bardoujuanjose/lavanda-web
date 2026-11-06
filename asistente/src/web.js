@@ -5,7 +5,7 @@
 //  (variable ANTHROPIC_API_KEY), nunca en la web.
 // =====================================================================
 import Anthropic from "@anthropic-ai/sdk";
-import { obtenerCliente } from "./clientes/index.js";
+import { obtenerCliente, buscarClientePorOrigen } from "./clientes/index.js";
 
 const MODELO = "claude-opus-5-5";
 
@@ -117,8 +117,11 @@ export async function preguntarAClaude(client, messages, cliente = obtenerClient
 //  Petición del chat de la web (ruta /chat)
 // ---------------------------------------------------------------------
 export async function atenderChatWeb(request, env) {
-    const cliente = obtenerCliente(env);
-    const cors = cabecerasCors(request.headers.get("Origin"), cliente.ficha.origenesPermitidos);
+    // La lavandería se reconoce por la web desde la que escriben (cada una tiene la suya)
+    const origen = request.headers.get("Origin");
+    const cliente = buscarClientePorOrigen(env, origen);
+    if (!cliente) return json({ error: "Web no autorizada" }, 403, {});
+    const cors = cabecerasCors(origen, cliente.ficha.origenesPermitidos);
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     if (request.method !== "POST") return json({ error: "Usa POST" }, 405, cors);

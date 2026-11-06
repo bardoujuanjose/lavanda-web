@@ -46,6 +46,7 @@ export function extraerMensajes(payload) {
       for (const m of v.messages || []) {
         lista.push({
           id: m.id,
+          numeroId: v.metadata?.phone_number_id || "",   // a qué número de WhatsApp han escrito (decide la lavandería)
           de: m.from,
           nombre: nombres[m.from] || "",
           tipo: m.type,

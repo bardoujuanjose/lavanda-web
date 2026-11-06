@@ -24,6 +24,24 @@ export const FICHA_LAVANDA = {
   equipoCobro: "del cajero",                                          // "…foto de la pantalla de una máquina o del cajero"
   ejemploNoExiste: "no existe ninguna máquina de cambio",             // ejemplo de algo que el asistente no debe inventar
 
+  // --- Conexiones de esta lavandería (cada una tiene su número de WhatsApp, su móvil y su teléfono de voz) ---
+  // Los datos privados NO van aquí (el repositorio es público): solo se dice con qué NOMBRE está guardado cada
+  // uno como secreto en Cloudflare (Settings → Variables and Secrets). Para otra lavandería, otros nombres
+  // (por ejemplo WHATSAPP_PHONE_ID_PEPITO).
+  secretos: {
+    phoneId: "WHATSAPP_PHONE_ID",   // identificador de su número de WhatsApp en Meta
+    token: "WHATSAPP_TOKEN",        // token de WhatsApp de ese número
+    dueno: "OWNER_PHONE",           // móvil del dueño (recibe los avisos)
+  },
+  // Números de Twilio por los que reciben llamadas esta lavandería (formato +34…). Vacío mientras no tenga.
+  numerosVoz: [],
+  // Plantilla de Meta para avisar al dueño cuando pasaron más de 24 h desde su último mensaje. Es de la cuenta de
+  // WhatsApp de cada lavandería. Sin este dato se usa OWNER_TEMPLATE / OWNER_TEMPLATE_LANG (hoy: aviso_lavanda, es).
+  // plantillaAviso: { nombre: "aviso_lavanda", idioma: "es" },
+  // Cómo se guarda la memoria de sus clientes de WhatsApp. Lavanda: "" (el teléfono a secas, como siempre, para
+  // no perder las conversaciones actuales). Las demás lavanderías no lo ponen y se usa "<id>:" delante.
+  prefijoMemoria: "",
+
   // Webs desde las que se puede usar el chat
   origenesPermitidos: [
     "https://lavandavendrell.es",

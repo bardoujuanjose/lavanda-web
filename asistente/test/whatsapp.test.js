@@ -57,6 +57,7 @@ test("comprueba la firma de Meta", async () => {
 
 test("extrae mensajes de texto, fotos y audios del aviso de Meta", () => {
   const payload = { entry: [{ changes: [{ field: "messages", value: {
+    metadata: { display_phone_number: "34689810213", phone_number_id: "111222333" },
     contacts: [{ wa_id: CLIENTE, profile: { name: "Ana" } }],
     messages: [
       { id: "m1", from: CLIENTE, type: "text", text: { body: "Hola" } },
@@ -67,7 +68,7 @@ test("extrae mensajes de texto, fotos y audios del aviso de Meta", () => {
   } }] }] };
   const m = extraerMensajes(payload);
   assert.equal(m.length, 3);
-  assert.deepEqual(m[0], { id: "m1", de: CLIENTE, nombre: "Ana", tipo: "text", texto: "Hola", mediaId: null });
+  assert.deepEqual(m[0], { id: "m1", numeroId: "111222333", de: CLIENTE, nombre: "Ana", tipo: "text", texto: "Hola", mediaId: null });
   assert.equal(m[1].mediaId, "img1");
   assert.equal(m[1].texto, "mira");
   assert.equal(m[2].tipo, "audio");

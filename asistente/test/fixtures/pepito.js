@@ -14,6 +14,12 @@ export const PEPITO = {
   telefonoWhatsapp: "34977000111",
   horario: "de 7:00 a 22:00",
   resenaUrl: "https://g.page/r/PEPITO/review",
+  // Sus propias conexiones: otros secretos, otro número de voz, otra web
+  secretos: { phoneId: "WHATSAPP_PHONE_ID_PEPITO", token: "WHATSAPP_TOKEN_PEPITO", dueno: "OWNER_PHONE_PEPITO" },
+  numerosVoz: ["+34977000111"],
+  plantillaAviso: { nombre: "aviso_pepito", idioma: "es" },   // la plantilla de avisos de SU cuenta de WhatsApp
+  prefijoMemoria: undefined,   // sin dato: "<id>:" delante (solo Lavanda conserva el teléfono a secas)
+  origenesPermitidos: ["https://pepitolava.es", "https://www.pepitolava.es"],
   equipoCobro: "del lector de tarjetas",
   ejemploNoExiste: "no existe ninguna máquina expendedora de detergente",
   conocimiento: {

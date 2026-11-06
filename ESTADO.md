@@ -53,9 +53,12 @@ empresa de Juanjo, no de Carmen) al que cada cliente desvía su teléfono; `Forw
 Hecho: los textos de los asistentes ya son una **plantilla + una ficha por lavandería** (`asistente/src/clientes/`,
 ver su README). Lavanda se comporta igual que antes (hay una prueba que lo comprueba letra por letra).
 Las normas de incidencias y dinero también van en la ficha (`normas`), porque cambian según cómo cobra cada local
-(cajero, tarjeta, app…). Pendiente para atender a varias: elegir la ficha según número llamado / número de WhatsApp / web;
-modelos de cobro reutilizables cuando haya 2-3 lavanderías reales; móvil del dueño y credenciales de WhatsApp por
-lavandería; panel y cobro.
+(cajero, tarjeta, app…). Cada lavandería tiene **su propio número de WhatsApp**: el sistema elige la ficha por el número al que escriben (WhatsApp),
+la web de origen (chat) y el número de Twilio al que llaman (voz); cada una con sus secretos, su dueño y su memoria de
+clientes (las conversaciones actuales de Lavanda se conservan). Probado con peticiones simuladas y dos lavanderías;
+**sin desplegar** y sin probar aún con una segunda lavandería real. Con una sola (hoy) todo funciona como antes.
+Pendiente: fichas en base de datos (hoy son archivos), alta de WhatsApp por el registro integrado de Meta, modelos de
+cobro reutilizables cuando haya 2-3 lavanderías reales, panel y cobro.
 
 ## Próxima tarea: publicaciones de Instagram (@lavandavendrell)
 
