@@ -4,7 +4,7 @@ Resumen para retomar el trabajo en una conversación nueva.
 Lavanda: lavandería autoservicio, Avda. Baix Penedès 33, 43700 El Vendrell.
 Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou (Juanjo).
 
-**Cómo se publica el Worker:** Cloudflare Workers Builds conectado a GitHub (bardoujuanjose/lavanda-web), rama de producción main, directorio raíz asistente, comando npx wrangler deploy. Fusionar en main publica. Las ramas dan error en la vista previa de Cloudflare (falta el bloque [previews] en wrangler.toml); no afecta a producción.
+**Cómo se publica el Worker:** Cloudflare Workers Builds conectado a GitHub (bardoujuanjose/lavanda-web), rama de producción main, directorio raíz asistente, comando npx wrangler deploy. Fusionar en main publica. Las compilaciones de ramas de vista previa están desactivadas en Cloudflare (Ajustes → Construcciones → Vistas previas, 06/11/2026), porque fallaban al faltar el bloque [previews] en wrangler.toml; no afecta a producción.
 
 ## Qué hay funcionando
 
