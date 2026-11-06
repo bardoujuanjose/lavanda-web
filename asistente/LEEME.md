@@ -6,6 +6,8 @@ Un mismo servidor (Cloudflare Worker) con dos asistentes que usan Claude:
 |---|---|---|
 | Chat de la web | `/chat` | Solo informa. Los problemas los manda a WhatsApp. |
 | WhatsApp (689 81 02 13) | `/whatsapp` | Informa, entiende fotos, gestiona incidencias y avisa al dueño. |
+| Panel de lavanderías | `/admin` | Alta, edición, conexión y activación de lavanderías (contraseña `ADMIN_CLAVE`). |
+| Alta de WhatsApp | `/alta/…` | Página para que el dueño conecte su número (enlace que genera el panel; registro integrado de Meta). |
 | Teléfono (Twilio) | `/voz` | Mismas normas que WhatsApp, hablando. Pasa la llamada al dueño en los casos difíciles. |
 
 ```
@@ -16,8 +18,12 @@ WhatsApp:  cliente → Meta → /whatsapp → memoria ──┴→ Claude
 
 ## Archivos
 
-- `src/negocio.js`: **lo que saben los asistentes** (datos del negocio y normas de cada canal).
-  Si cambia algo del negocio, se edita aquí.
+- `src/clientes/lavanda.js`: **la ficha de Lavanda**: sus datos (nombre, teléfono, horario, precios, máquinas…).
+  Si cambia algo del negocio (un precio, el horario), se edita aquí. Ver `src/clientes/README.md`.
+- `src/negocio.js`: **la plantilla**: las normas de cada canal, comunes a todas las lavanderías, con huecos
+  que se rellenan con la ficha. `crearTextos(ficha)` monta todo lo que necesitan los asistentes.
+- `src/clientes/index.js`: **reconoce de qué lavandería es** cada mensaje de WhatsApp (por su número), cada web (por su
+  dominio) y cada llamada (por su número de Twilio). Hoy solo hay una (Lavanda); cada nueva tiene su ficha y su número.
 - `src/index.js`: reparte las peticiones entre la web y WhatsApp.
 - `src/web.js`: el chat de la web.
 - `src/webhook.js`: recibe los mensajes de WhatsApp y comprueba que vienen de Meta.
@@ -56,6 +62,8 @@ mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lav
 | `WHATSAPP_APP_SECRET` | "App secret" de la app de Meta |
 | `WHATSAPP_VERIFY_TOKEN` | Palabra secreta inventada para conectar Meta |
 | `OWNER_PHONE` | Móvil personal del dueño (recibe los avisos) |
+| `ADMIN_CLAVE` | Contraseña del panel `/admin` |
+| `CLAVE_CIFRADO` | Clave para cifrar los tokens de WhatsApp de las demás lavanderías (mín. 16 caracteres; no cambiarla) |
 
 **Nunca** se escriben en ningún archivo del proyecto (el repositorio es público).
 
@@ -69,7 +77,7 @@ mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lav
 
 - En Twilio, el número tiene configurado en **Voice → A call comes in**: Webhook
   `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (HTTP POST).
-- Las normas son las mismas que en WhatsApp (`PROCEDIMIENTOS` en `negocio.js`) con adaptaciones para
+- Las normas son las mismas que en WhatsApp (`PROCEDIMIENTOS` en la plantilla `negocio.js`) con adaptaciones para
   hablar (`INSTRUCCIONES_VOZ`).
 - En los casos en que WhatsApp diría "llama al 689 810 213", la llamada se pasa a `OWNER_PHONE`.
   Si no contesta en 25 s, se le dice al cliente que escriba por WhatsApp y el dueño recibe un aviso

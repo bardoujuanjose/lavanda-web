@@ -20,6 +20,15 @@ class_name = "Conversacion"
 tag = "v1"
 new_sqlite_classes = ["Conversacion"]
 
+# Fichas de las lavanderías dadas de alta en el panel /admin (una sola instancia)
+[[durable_objects.bindings]]
+name = "REGISTRO"
+class_name = "Registro"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Registro"]
+
 # Transcripción de audios de WhatsApp (Workers AI, plan gratuito)
 [ai]
 binding = "AI"
@@ -36,6 +45,11 @@ VOZ_TTS_PROVIDER = "ElevenLabs"
 # Voz elegida en ElevenLabs: "VoiceID-modelo-velocidad_estabilidad_similitud" (velocidad 0.9)
 VOZ_VOZ = "2BJPFS2QZRUEpfkbclGy-flash_v2_5-0.9_0.5_0.75"
 OWNER_TEMPLATE_LANG = "es"
+# App de Meta para que cada lavandería conecte su WhatsApp ("registro integrado", página /alta/…).
+# META_APP_ID: arriba del todo en el panel de la app de Meta. META_CONFIG_ID: Facebook Login for Business →
+# Configurations (plantilla "WhatsApp Embedded Signup"). No son secretos. Descoméntalas al tenerlas:
+# META_APP_ID = ""
+# META_CONFIG_ID = ""
 
 # SECRETOS: NO van aquí. Se guardan en Cloudflare
 # (Settings → Variables and Secrets → Runtime → tipo Secret):
@@ -45,6 +59,9 @@ OWNER_TEMPLATE_LANG = "es"
 #   WHATSAPP_APP_SECRET    "App secret" de la app de Meta
 #   WHATSAPP_VERIFY_TOKEN  palabra secreta que inventas para conectar Meta
 #   OWNER_PHONE            tu móvil personal (donde recibes los avisos)
+#   ADMIN_CLAVE            contraseña del panel /admin
+#   CLAVE_CIFRADO          clave (mínimo 16 caracteres) para cifrar los tokens de WhatsApp de cada lavandería.
+#                          Si se cambia, los tokens guardados dejan de poder leerse.
 
 # Archivos públicos (frases grabadas con la voz del asistente), en https://…/audio/…
 [assets]

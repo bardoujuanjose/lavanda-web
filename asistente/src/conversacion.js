@@ -5,8 +5,9 @@
 import { DurableObject } from "cloudflare:workers";
 import Anthropic from "@anthropic-ai/sdk";
 import { clienteWhatsApp } from "./whatsapp.js";
+import { obtenerCliente, entornoDe, prepararRegistro } from "./clientes/index.js";
 import {
-  ESPERA_MS, RESPUESTA_ERROR, estadoInicial, procesarPendientes, aplicarResultado, comandoDueno,
+  ESPERA_MS, estadoInicial, procesarPendientes, aplicarResultado, comandoDueno, ecoDelDueno,
 } from "./asistente-whatsapp.js";
 
 // Convierte un audio de WhatsApp en texto con el modelo Whisper de Cloudflare (Workers AI)
@@ -41,7 +42,7 @@ export class Conversacion extends DurableObject {
   }
 
   // Llega un mensaje del cliente: se guarda y se espera unos segundos por si manda más
-  async recibir(mensaje) {
+  async recibir(mensaje, clienteId) {
     const vistos = (await this.ctx.storage.get("vistos")) || [];
     if (vistos.includes(mensaje.id)) return; // Meta a veces repite el aviso
     vistos.push(mensaje.id);
@@ -51,6 +52,7 @@ export class Conversacion extends DurableObject {
       vistos: vistos.slice(-100),
       pendientes,
       telefono: mensaje.de,
+      ...(clienteId ? { cliente: clienteId } : {}),   // de qué lavandería es (sin este dato: Lavanda, como antes)
       ...(mensaje.nombre ? { nombre: mensaje.nombre } : {}),
     });
     await this.ctx.storage.setAlarm(Date.now() + ESPERA_MS);
@@ -67,7 +69,10 @@ export class Conversacion extends DurableObject {
     await this.ctx.storage.put("pendientes", []);
     const telefono = await this.ctx.storage.get("telefono");
     const nombre = (await this.ctx.storage.get("nombre")) || "";
-    const wa = clienteWhatsApp(this.env);
+    await prepararRegistro(this.env);   // por si es una lavandería dada de alta en el panel
+    const cliente = obtenerCliente(this.env, (await this.ctx.storage.get("cliente")) || undefined);
+    const env = entornoDe(this.env, cliente);   // el token, el número y el dueño de ESA lavandería
+    const wa = clienteWhatsApp(env);
     this.procesando = true;
     try {
       const claude = new Anthropic({
@@ -77,7 +82,7 @@ export class Conversacion extends DurableObject {
         timeout: 60_000,
       });
       const resultado = await procesarPendientes({
-        estado: await this.leerEstado(), pendientes, telefono, nombre, wa, claude, env: this.env,
+        estado: await this.leerEstado(), pendientes, telefono, nombre, wa, claude, env, cliente,
         transcribir: this.env.AI ? (bytes) => transcribirAudio(this.env.AI, bytes) : undefined,
       });
       await this.guardarResultado(resultado);
@@ -86,7 +91,7 @@ export class Conversacion extends DurableObject {
       else if (e instanceof Anthropic.RateLimitError) console.error("WhatsApp: límite de uso de Claude alcanzado");
       else if (e instanceof Anthropic.APIError) console.error(`WhatsApp: error de Claude ${e.status}:`, e.message);
       else console.error("WhatsApp: error inesperado:", e?.message || e);
-      await wa.enviarTexto(telefono, RESPUESTA_ERROR).catch(() => {});
+      await wa.enviarTexto(telefono, cliente.textos.RESPUESTA_ERROR).catch(() => {});
     } finally {
       this.procesando = false;
     }
@@ -100,10 +105,20 @@ export class Conversacion extends DurableObject {
     await this.ctx.storage.put("config:" + clave, valor);
   }
 
+  // El dueño ha contestado desde la app WhatsApp Business: el asistente se calla con este cliente
+  async eco(texto, clienteId) {
+    await prepararRegistro(this.env);
+    const cliente = obtenerCliente(this.env, clienteId);
+    await this.guardarResultado(ecoDelDueno({ estado: await this.leerEstado(), texto, cliente }));
+  }
+
   // El dueño escribe "#telefono texto" o "#telefono fin"
-  async dueno(telefono, texto) {
+  async dueno(telefono, texto, clienteId) {
+    await prepararRegistro(this.env);
+    const cliente = obtenerCliente(this.env, clienteId);
+    const env = entornoDe(this.env, cliente);
     const resultado = await comandoDueno({
-      estado: await this.leerEstado(), telefono, texto, wa: clienteWhatsApp(this.env), env: this.env,
+      estado: await this.leerEstado(), telefono, texto, wa: clienteWhatsApp(env), env, cliente,
     });
     await this.guardarResultado(resultado);
   }

@@ -10,9 +10,7 @@
 //            OWNER_PHONE (móvil al que se pasan las llamadas)
 // =====================================================================
 import Anthropic from "@anthropic-ai/sdk";
-import {
-  INSTRUCCIONES_VOZ, SALUDO_VOZ, HERRAMIENTA_AVISO, HERRAMIENTA_PASAR_LLAMADA,
-} from "./negocio.js";
+import { obtenerCliente, buscarClientePorVoz, entornoDe } from "./clientes/index.js";
 import { normalizarTelefono, clienteWhatsApp } from "./whatsapp.js";
 import { avisarDueno, claveAviso } from "./asistente-whatsapp.js";
 
@@ -32,8 +30,7 @@ export const VOCES_PRUEBA = [
   "ElevenLabs|",
 ];
 const MAX_VUELTAS = 3;
-const NO_CONTESTA =
-  "Ahora mismo no podemos atenderte. Escríbenos por WhatsApp a este mismo número, el 689 810 213, y te ayudamos. Gracias por llamar a Lavanda.";
+// La frase de "no podemos atenderte" depende de la lavandería: está en sus textos (NO_CONTESTA_VOZ)
 
 // ---------------------------------------------------------------------
 //  Utilidades
@@ -62,8 +59,9 @@ export async function firmaTwilioValida(authToken, url, params, firma) {
 }
 
 // Pase para el WebSocket (solo lo puede generar quien tiene el token de Twilio)
-export async function paseLlamada(env, callSid, numeroPrueba = "") {
-  return aHex(await hmac("SHA-256", env.TWILIO_AUTH_TOKEN, "voz:" + callSid + ":" + numeroPrueba)).slice(0, 32);
+// (la lavandería va dentro del pase: nadie puede cambiarla en la dirección de la llamada)
+export async function paseLlamada(env, callSid, numeroPrueba = "", clienteId = "") {
+  return aHex(await hmac("SHA-256", env.TWILIO_AUTH_TOKEN, "voz:" + callSid + ":" + numeroPrueba + (clienteId ? ":" + clienteId : ""))).slice(0, 32);
 }
 
 const xml = (t) => String(t).replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]);
@@ -113,20 +111,35 @@ export async function atenderVoz(request, env, ctx) {
   const p = await comprobarFirma(request, env);
   if (!p) return new Response("Firma no válida", { status: 403 });
 
+  // ¿De qué lavandería es la llamada? Al empezar, por el número de Twilio al que llaman; después, por la
+  // marca "k" que nosotros mismos ponemos en las direcciones siguientes (la firma de Twilio la protege).
+  let cliente = null;
+  try {
+    const k = url.searchParams.get("k");
+    cliente = k ? obtenerCliente(env, k) : buscarClientePorVoz(env, p.To);
+  } catch { /* lavandería desconocida */ }
+  if (!cliente) {
+    console.error(`Voz: llamada al número ${p.To || "(desconocido)"}, que no es de ninguna lavandería`);
+    return twiml(decir("Este número no está disponible. Gracias por llamar.", env) + "<Hangup/>");
+  }
+  const { textos } = cliente;
+  const envC = entornoDe(env, cliente);   // móvil del dueño y credenciales de ESA lavandería
+
   // 1) Llega una llamada: conectar con el asistente
   if (url.pathname === "/voz") {
     // Llamada de prueba desde el navegador: puede simular el número del cliente
     const numeroPrueba = String(p.From || "").startsWith("client:") ? normalizarTelefono(p.TelefonoPrueba || "").slice(0, 15) : "";
-    const pase = await paseLlamada(env, p.CallSid, numeroPrueba);
+    const pase = await paseLlamada(env, p.CallSid, numeroPrueba, cliente.ficha.id);
     const ws = new URL("/voz/ws", url);
     ws.protocol = "wss:";
-    ws.search = new URLSearchParams({ c: p.CallSid, ...(numeroPrueba ? { n: numeroPrueba } : {}), t: pase }).toString();
+    ws.search = new URLSearchParams({ c: p.CallSid, k: cliente.ficha.id, ...(numeroPrueba ? { n: numeroPrueba } : {}), t: pase }).toString();
     const fin = new URL("/voz/fin", url);
     fin.protocol = "https:";
+    fin.search = new URLSearchParams({ k: cliente.ficha.id }).toString();
     const atributos = {
       url: ws.toString(),
       language: env.VOZ_IDIOMA || "es-ES",
-      welcomeGreeting: SALUDO_VOZ,
+      welcomeGreeting: textos.SALUDO_VOZ,
       ttsProvider: env.VOZ_TTS_PROVIDER || "Amazon",
       voice: env.VOZ_VOZ || "Lucia-Neural",
     };
@@ -154,7 +167,7 @@ export async function atenderVoz(request, env, ctx) {
   if (url.pathname === "/voz/fin") {
     let datos = {};
     try { datos = JSON.parse(p.HandoffData || "{}"); } catch { /* sin datos */ }
-    const dueno = normalizarTelefono(env.OWNER_PHONE);
+    const dueno = normalizarTelefono(envC.OWNER_PHONE);
     const idCallerId = /^\+\d{6,}$/.test(p.From || "") ? p.From : /^\+\d{6,}$/.test(p.To || "") ? p.To : "";
     if (datos.accion === "pasar" && dueno && !idCallerId) {
       // Llamada de prueba desde el navegador: no hay número desde el que pasarla
@@ -163,7 +176,7 @@ export async function atenderVoz(request, env, ctx) {
     if (datos.accion === "pasar" && dueno) {
       const tras = new URL("/voz/tras-dial", url);
       tras.protocol = "https:";
-      tras.search = new URLSearchParams({ r: String(datos.resumen || "").slice(0, 300) }).toString();
+      tras.search = new URLSearchParams({ k: cliente.ficha.id, r: String(datos.resumen || "").slice(0, 300) }).toString();
       return twiml(
         frase("pasar", "Te paso con un compañero, un momento por favor.", env, url) +
         `<Dial timeout="25" callerId="${xml(idCallerId)}" action="${xml(tras.toString())}"><Number>+${xml(dueno)}</Number></Dial>`,
@@ -171,7 +184,7 @@ export async function atenderVoz(request, env, ctx) {
     }
     if (p.ErrorCode || p.SessionStatus === "failed") {
       console.error("Voz: la sesión de ConversationRelay falló:", p.ErrorCode, p.ErrorMessage);
-      return twiml(frase("noContesta", NO_CONTESTA, env, url) + "<Hangup/>");
+      return twiml(frase("noContesta", textos.NO_CONTESTA_VOZ, env, url) + "<Hangup/>");
     }
     return twiml("<Hangup/>");
   }
@@ -182,11 +195,11 @@ export async function atenderVoz(request, env, ctx) {
     const resumen = url.searchParams.get("r") || "";
     ctx?.waitUntil?.(
       avisarDueno({
-        env, wa: clienteWhatsApp(env), telefono: normalizarTelefono(p.From), nombre: "",
+        env: envC, cliente, wa: clienteWhatsApp(envC), telefono: normalizarTelefono(p.From), nombre: "",
         motivo: "llamada_perdida", resumen: resumen || "Llamada que el asistente intentó pasarte.", maquina: "", importe: "", telefonoCliente: p.From,
       }).catch((e) => console.error("Voz: no se pudo avisar de la llamada perdida:", e.message)),
     );
-    return twiml(frase("noContesta", NO_CONTESTA, env, url) + "<Hangup/>");
+    return twiml(frase("noContesta", textos.NO_CONTESTA_VOZ, env, url) + "<Hangup/>");
   }
 
   return new Response("No encontrado", { status: 404 });
@@ -200,10 +213,14 @@ async function abrirConversacion(request, env, ctx) {
   const url = new URL(request.url);
   const callSid = url.searchParams.get("c") || "";
   const numeroPrueba = url.searchParams.get("n") || "";
-  if (!igual(url.searchParams.get("t") || "", await paseLlamada(env, callSid, numeroPrueba))) {
+  const clienteId = url.searchParams.get("k") || "";
+  if (!igual(url.searchParams.get("t") || "", await paseLlamada(env, callSid, numeroPrueba, clienteId))) {
     console.error("Voz: intento de conexión sin pase válido");
     return new Response("No autorizado", { status: 403 });
   }
+  let lavanderia;
+  try { lavanderia = obtenerCliente(env, clienteId || undefined); } catch { return new Response("Lavandería desconocida", { status: 403 }); }
+  const envC = entornoDe(env, lavanderia);
   const par = new WebSocketPair();
   const [cliente, servidor] = Object.values(par);
   servidor.accept();
@@ -214,8 +231,8 @@ async function abrirConversacion(request, env, ctx) {
     timeout: 30_000,
   });
   const sesion = crearSesion({
-    numeroPrueba,
-    env, claude, wa: clienteWhatsApp(env),
+    numeroPrueba, cliente: lavanderia,
+    env: envC, claude, wa: clienteWhatsApp(envC),
     enviar: (obj) => { try { servidor.send(JSON.stringify(obj)); } catch { /* llamada colgada */ } },
   });
   servidor.addEventListener("message", (ev) => {
@@ -227,7 +244,10 @@ async function abrirConversacion(request, env, ctx) {
 }
 
 // Lógica de la conversación (independiente del WebSocket para poder probarla)
-export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora = () => Date.now() }) {
+export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora = () => Date.now(), cliente = obtenerCliente(env) }) {
+  const { ficha, textos } = cliente;
+  const HERRAMIENTA_AVISO = textos.HERRAMIENTA_AVISO;
+  const HERRAMIENTA_PASAR_LLAMADA = textos.HERRAMIENTA_PASAR_LLAMADA;
   const historial = [];
   const avisos = [];
   let llamante = "";
@@ -238,7 +258,7 @@ export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora 
   function sistema() {
     const ult3 = llamante.slice(-3).split("").join(" ");
     return (
-      `Hora actual en El Vendrell: ${new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(ahora()))}.` +
+      `${textos.HORA_ETIQUETA}: ${new Intl.DateTimeFormat("es-ES", { timeZone: ficha.zonaHoraria, weekday: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(ahora()))}.` +
       (llamante ? ` El cliente llama desde el +${llamante} (acaba en ${ult3}).` : " No se conoce el número del cliente.") +
       (avisos.length ? ` Avisos ya enviados en esta llamada (no los repitas): ${avisos.map((a) => a.motivo).join(", ")}.` : "")
     );
@@ -252,7 +272,7 @@ export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora 
     // Sonnet 5.5: "between_tools" = sin razonamiento previo (lo más rápido). Otros modelos: adaptativo.
     ...(modelo === "claude-sonnet-5-5" ? { thinking: { type: "between_tools" } } : {}),
     output_config: { effort: "low" },
-    system: [{ type: "text", text: INSTRUCCIONES_VOZ, cache_control: { type: "ephemeral" } }],
+    system: [{ type: "text", text: textos.INSTRUCCIONES_VOZ, cache_control: { type: "ephemeral" } }],
     tools: [HERRAMIENTA_AVISO, HERRAMIENTA_PASAR_LLAMADA],
   };
 
@@ -338,7 +358,7 @@ export function crearSesion({ env, claude, wa, enviar, numeroPrueba = "", ahora 
           } else {
             try {
               await avisarDueno({
-                env, wa, telefono: llamante, nombre: "📞 Llamada",
+                env, cliente, wa, telefono: llamante, nombre: "📞 Llamada",
                 motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, importe: datos.importe, telefonoCliente: datos.telefono,
               });
               avisos.push({ clave, motivo: datos.motivo });

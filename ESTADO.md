@@ -13,7 +13,7 @@ Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou
 | Asistente de WhatsApp | Cloudflare Worker `lavanda-asistente`, ruta `/whatsapp` | Sustituye a Botpress (apagado). App de Meta "Lavanda Asistente" publicada. Claude Opus 5.5. |
 | Asistente de voz | Ruta `/voz` (Twilio ConversationRelay) | Claude Sonnet 5.5 sin razonamiento previo, voz ElevenLabs `2BJPFS2QZRUEpfkbclGy` a 0.9. Probado desde el navegador. |
 | Chat de pruebas | https://lavanda-asistente.bardoujuanjose.workers.dev/prueba | Con contraseña (`PRUEBA_CLAVE`). Botones Llamar, Twilio y WhatsApp. |
-| Normas de los asistentes | `asistente/src/negocio.js` | Basadas en las de Botpress. Casos A, B, C y D de dinero/cambio, Bizum en 48 h previa verificación. |
+| Normas de los asistentes | `asistente/src/negocio.js` (plantilla) | Basadas en las de Botpress. Casos A, B, C y D de dinero/cambio, Bizum en 48 h previa verificación. Los datos de Lavanda están en su ficha: `asistente/src/clientes/lavanda.js`. |
 | Correo | info@lavandavendrell.es | Reenvío gratuito con ImprovMX a juanjobardou@hotmail.com. |
 | Facebook | facebook.com/lavandalaundryelvendrell | Web, correo, teléfono y dirección actualizados. |
 | Instagram | @lavandavendrell | Cuenta profesional, en la cuenta de Meta de Juanjo. |
@@ -42,6 +42,32 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
 5. **Meta**: plantilla `aviso_lavanda` (Utilidad, español, cuerpo `Nuevo aviso de Lavanda: {{1}}`) y método de pago.
 6. ~~**GitHub Pages**: marcar "Enforce HTTPS"~~ (hecho).
 7. **Claude Console**: poner límite de gasto mensual.
+
+## Producto para otras lavanderías (en marcha)
+
+Idea: vender el asistente (web + WhatsApp + voz) a lavanderías autoservicio de toda España. Plan comentado: suscripción
+(Básico ≈ 39 €/mes con web y WhatsApp; Completo ≈ 89 €/mes con voz y panel; precios por validar), pilotos con 2-3
+lavanderías, distribuidores de maquinaria como canal. Para la voz, un número de Twilio por lavandería (a nombre de la
+empresa de Juanjo, no de Carmen) al que cada cliente desvía su teléfono; `ForwardedFrom` no está garantizado.
+
+Hecho: los textos de los asistentes ya son una **plantilla + una ficha por lavandería** (`asistente/src/clientes/`,
+ver su README). Lavanda se comporta igual que antes (hay una prueba que lo comprueba letra por letra).
+Las normas de incidencias y dinero también van en la ficha (`normas`), porque cambian según cómo cobra cada local
+(cajero, tarjeta, app…). Cada lavandería tiene **su propio número de WhatsApp**: el sistema elige la ficha por el número al que escriben (WhatsApp),
+la web de origen (chat) y el número de Twilio al que llaman (voz); cada una con sus secretos, su dueño y su memoria de
+clientes (las conversaciones actuales de Lavanda se conservan). Probado con peticiones simuladas y dos lavanderías;
+**sin desplegar** y sin probar aún con una segunda lavandería real. Con una sola (hoy) todo funciona como antes.
+**Panel `/admin`** (contraseña `ADMIN_CLAVE`): alta y edición de lavanderías en una base de datos (Durable Object
+`Registro`), conexión de su WhatsApp (token cifrado con `CLAVE_CIFRADO`) y activación con comprobaciones. Lavanda
+sigue siendo fija en el código. **Antes de desplegar:** crear los secretos `ADMIN_CLAVE` y `CLAVE_CIFRADO`.
+**Alta de WhatsApp por el dueño** (`/alta/…`, registro integrado de Meta v4): el panel genera un enlace; el dueño
+conecta su número con su Facebook, también si ya usa la app WhatsApp Business ("coexistencia": cuando contesta
+desde la app, el asistente se calla con ese cliente). Probado con Meta simulado y en navegador, **no con Meta real**.
+**Para activarlo hace falta, en Meta:** ser Tech Provider, configurar Facebook Login for Business (dominio del
+servidor) y crear la configuración de Embedded Signup; poner `META_APP_ID` y `META_CONFIG_ID` en `wrangler.toml`.
+Pasos detallados en `asistente/src/clientes/README.md`.
+Pendiente: probar el alta con un número real, modelos de cobro reutilizables cuando haya 2-3 lavanderías reales,
+cobro de la suscripción.
 
 ## Próxima tarea: publicaciones de Instagram (@lavandavendrell)
 

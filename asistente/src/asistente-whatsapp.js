@@ -2,7 +2,7 @@
 //  Lógica del asistente de WhatsApp
 //  (sin dependencias de Cloudflare, para poder probarla fácilmente)
 // =====================================================================
-import { INSTRUCCIONES_WHATSAPP, HERRAMIENTA_AVISO } from "./negocio.js";
+import { obtenerCliente } from "./clientes/index.js";
 import { ERROR_FUERA_DE_24H, normalizarTelefono } from "./whatsapp.js";
 
 export const MODELO = "claude-opus-5-5";
@@ -13,8 +13,8 @@ const FOTO_MAX_BYTES = 5 * 1024 * 1024;
 const TIPOS_FOTO = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_VUELTAS = 4;
 
-export const RESPUESTA_ERROR =
-  "Perdona, he tenido un problema técnico. Llama a uno de nuestros agentes al 689 810 213, de 8:00 a 21:00.";
+// Frase de error de la lavandería por defecto (cada lavandería tiene la suya en sus textos)
+export const RESPUESTA_ERROR = obtenerCliente().textos.RESPUESTA_ERROR;
 
 export function estadoInicial() {
   return { historial: [], pausa: null, avisos: [] };
@@ -28,20 +28,21 @@ export function claveAviso(datos) {
   return [datos.motivo, cifras(datos.telefono), cifras(datos.importe), cifras(datos.maquina)].join("|");
 }
 
-function describirAviso(a) {
-  const nombres = { bizum: "Bizum", servicio_personalizado: "servicio personalizado", justificante_factura: "justificante/factura" };
-  return [nombres[a.motivo] || a.motivo, a.maquina && `máquina ${a.maquina}`, a.importe, a.telefono && `tel. ${a.telefono}`]
+// Los motivos de aviso (Bizum, devolución, justificante…) dependen de la lavandería: están en su ficha
+function describirAviso(a, motivos) {
+  const nombre = motivos.find((m) => m.clave === a.motivo)?.nombre;
+  return [nombre || a.motivo, a.maquina && `máquina ${a.maquina}`, a.importe, a.telefono && `tel. ${a.telefono}`]
     .filter(Boolean).join(", ");
 }
 
-export function textoAyudaDueno() {
+export function textoAyudaDueno({ textos } = obtenerCliente()) {
   return [
-    "🤖 *Asistente de Lavanda: cómo usarlo*",
+    textos.AYUDA_DUENO_TITULO,
     "",
     "Cuando te llegue un aviso, contesta al cliente escribiendo aquí:",
     "#34612345678 tu mensaje",
     "",
-    "El cliente lo recibe desde el número de Lavanda y el asistente se queda callado en ese chat.",
+    textos.AYUDA_DUENO_NUMERO,
     "Para que el asistente vuelva a atenderle:",
     "#34612345678 fin",
     "",
@@ -56,9 +57,9 @@ export function leerComandoDueno(texto) {
   return { telefono: normalizarTelefono(m[1]), texto: m[2].trim() };
 }
 
-function horaActual(ahora) {
+function horaActual(ahora, zonaHoraria) {
   return new Intl.DateTimeFormat("es-ES", {
-    timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+    timeZone: zonaHoraria, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
   }).format(new Date(ahora));
 }
 
@@ -94,13 +95,11 @@ export function resumirPendientes(pendientes) {
 // ---------------------------------------------------------------------
 //  Avisar al dueño por WhatsApp
 // ---------------------------------------------------------------------
-export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, importe, telefonoCliente }) {
+export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, maquina, importe, telefonoCliente, cliente = obtenerCliente(env) }) {
   const dueno = normalizarTelefono(env.OWNER_PHONE);
   if (!dueno) throw new Error("Falta OWNER_PHONE");
   const titulos = {
-    bizum: "💸 *Bizum pendiente de verificar*",
-    servicio_personalizado: "🏡 *Servicio personalizado*",
-    justificante_factura: "🧾 *Justificante / factura*",
+    ...Object.fromEntries(cliente.ficha.normas.motivosAviso.map((m) => [m.clave, m.titulo])),
     llamada_perdida: "📞 *Llamada perdida (no contestaste)*",
     otro: "📌 *Aviso*",
   };
@@ -124,7 +123,9 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
     // Han pasado más de 24 h desde tu último mensaje al número del negocio: Meta exige una plantilla aprobada
     const linea = `${(titulos[motivo] || titulos.otro).replace(/[*]/g, "")} - ${nombre || "Cliente"} (${bonito(telefono)})${maquina ? " - máquina " + maquina : ""}: ${resumen}${importe ? " - importe " + importe : ""}${telefonoCliente ? " - teléfono " + telefonoCliente : ""}`
       .replace(/\s+/g, " ").slice(0, 900);
-    await wa.enviarPlantilla(dueno, env.OWNER_TEMPLATE || "aviso_lavanda", env.OWNER_TEMPLATE_LANG || "es", [linea]);
+    // La plantilla de aviso es de la cuenta de WhatsApp de cada lavandería: si la ficha no dice otra, la de siempre
+    const plantilla = cliente.ficha.plantillaAviso;
+    await wa.enviarPlantilla(dueno, plantilla?.nombre || env.OWNER_TEMPLATE || "aviso_lavanda", plantilla?.idioma || env.OWNER_TEMPLATE_LANG || "es", [linea]);
   }
 }
 
@@ -132,7 +133,9 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
 //  Procesa los mensajes acumulados de un cliente
 //  Devuelve { anadir: [...mensajes para la memoria], pausa: undefined | null | {...} }
 // ---------------------------------------------------------------------
-export async function procesarPendientes({ estado, pendientes, telefono, nombre, wa, claude, env, transcribir, ahora = Date.now() }) {
+export async function procesarPendientes({ estado, pendientes, telefono, nombre, wa, claude, env, transcribir, ahora = Date.now(), cliente = obtenerCliente(env) }) {
+  const { ficha, textos } = cliente;
+  const HERRAMIENTA_AVISO = textos.HERRAMIENTA_AVISO;
   const resultado = { anadir: [], pausa: undefined };
   let pausa = estado.pausa;
   if (pausaCaducada(pausa, ahora)) { pausa = null; resultado.pausa = null; }
@@ -141,6 +144,11 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
 
   // --- El equipo está atendiendo: reenviar al dueño y no contestar ---
   if (pausa) {
+    // Con "coexistencia" el dueño ya ve los mensajes en su app WhatsApp Business: no se le reenvían
+    if (ficha.conexion?.modo === "coexistencia") {
+      resultado.anadir.push({ role: "user", content: resumen });
+      return resultado;
+    }
     const dueno = normalizarTelefono(env.OWNER_PHONE);
     for (const p of pendientes) {
       try {
@@ -215,10 +223,10 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
     {
       role: "system",
       content:
-        `Hora actual en El Vendrell: ${horaActual(ahora)}.` +
+        `${textos.HORA_ETIQUETA}: ${horaActual(ahora, ficha.zonaHoraria)}.` +
         (nombre ? ` Nombre del cliente en WhatsApp: ${nombre}.` : "") +
         (avisosPrevios.length
-          ? ` Avisos YA enviados al equipo en esta conversación (no los repitas): ${avisosPrevios.map(describirAviso).join("; ")}.`
+          ? ` Avisos YA enviados al equipo en esta conversación (no los repitas): ${avisosPrevios.map((a) => describirAviso(a, ficha.normas.motivosAviso)).join("; ")}.`
           : " Todavía no se ha enviado ningún aviso al equipo en esta conversación."),
     },
   ];
@@ -232,7 +240,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
       output_config: { effort: "medium" },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: [{ type: "text", text: INSTRUCCIONES_WHATSAPP, cache_control: { type: "ephemeral" } }],
+      system: [{ type: "text", text: textos.INSTRUCCIONES_WHATSAPP, cache_control: { type: "ephemeral" } }],
       tools: [HERRAMIENTA_AVISO],
       messages: mensajes,
     });
@@ -267,7 +275,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
             continue;
           }
           await avisarDueno({
-            env, wa, telefono, nombre,
+            env, wa, telefono, nombre, cliente,
             motivo: datos.motivo, resumen: datos.resumen, maquina: datos.maquina, importe: datos.importe, telefonoCliente: datos.telefono,
           });
           enviadosAhora.push({
@@ -286,7 +294,7 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
     mensajes.push({ role: "user", content: resultados });
   }
 
-  if (!respuesta) respuesta = RESPUESTA_ERROR;
+  if (!respuesta) respuesta = textos.RESPUESTA_ERROR;
   await wa.enviarTexto(telefono, respuesta);
 
   if (enviadosAhora.length) resultado.avisos = enviadosAhora;
@@ -306,9 +314,21 @@ export function aplicarResultado(estado, resultado) {
 }
 
 // ---------------------------------------------------------------------
+//  El dueño ha contestado él mismo desde la app WhatsApp Business ("coexistencia"):
+//  se apunta en la memoria y el asistente se calla con ese cliente (como con "#telefono texto").
+//  Vuelve a atender si nadie del equipo escribe en 12 h, o con "#telefono fin".
+// ---------------------------------------------------------------------
+export function ecoDelDueno({ estado, texto, ahora = Date.now(), cliente = obtenerCliente() }) {
+  return {
+    anadir: [{ role: "assistant", content: `${cliente.textos.ETIQUETA_EQUIPO} ${texto || "[mensaje]"}` }],
+    pausa: { desde: estado.pausa?.desde || ahora, ultimoDueno: ahora, motivo: "app" },
+  };
+}
+
+// ---------------------------------------------------------------------
 //  Mensajes del dueño: "#telefono texto" o "#telefono fin"
 // ---------------------------------------------------------------------
-export async function comandoDueno({ estado, telefono, texto, wa, env, ahora = Date.now() }) {
+export async function comandoDueno({ estado, telefono, texto, wa, env, ahora = Date.now(), cliente = obtenerCliente(env) }) {
   const dueno = normalizarTelefono(env.OWNER_PHONE);
   if (!texto) {
     await wa.enviarTexto(dueno, `Escribe el mensaje después del número. Ejemplo:\n#${telefono} Hola, ya lo hemos revisado`);
@@ -328,7 +348,7 @@ export async function comandoDueno({ estado, telefono, texto, wa, env, ahora = D
     return { anadir: [], pausa: undefined };
   }
   return {
-    anadir: [{ role: "assistant", content: `[Mensaje del equipo de Lavanda] ${texto}` }],
+    anadir: [{ role: "assistant", content: `${cliente.textos.ETIQUETA_EQUIPO} ${texto}` }],
     pausa: { desde: estado.pausa?.desde || ahora, ultimoDueno: ahora, motivo: estado.pausa?.motivo || "equipo" },
   };
 }
