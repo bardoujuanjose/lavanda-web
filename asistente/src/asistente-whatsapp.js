@@ -144,6 +144,11 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
 
   // --- El equipo está atendiendo: reenviar al dueño y no contestar ---
   if (pausa) {
+    // Con "coexistencia" el dueño ya ve los mensajes en su app WhatsApp Business: no se le reenvían
+    if (ficha.conexion?.modo === "coexistencia") {
+      resultado.anadir.push({ role: "user", content: resumen });
+      return resultado;
+    }
     const dueno = normalizarTelefono(env.OWNER_PHONE);
     for (const p of pendientes) {
       try {
@@ -306,6 +311,18 @@ export function aplicarResultado(estado, resultado) {
   nuevo.historial = nuevo.historial.slice(-HISTORIAL_MAX);
   while (nuevo.historial.length && nuevo.historial[0].role !== "user") nuevo.historial.shift();
   return nuevo;
+}
+
+// ---------------------------------------------------------------------
+//  El dueño ha contestado él mismo desde la app WhatsApp Business ("coexistencia"):
+//  se apunta en la memoria y el asistente se calla con ese cliente (como con "#telefono texto").
+//  Vuelve a atender si nadie del equipo escribe en 12 h, o con "#telefono fin".
+// ---------------------------------------------------------------------
+export function ecoDelDueno({ estado, texto, ahora = Date.now(), cliente = obtenerCliente() }) {
+  return {
+    anadir: [{ role: "assistant", content: `${cliente.textos.ETIQUETA_EQUIPO} ${texto || "[mensaje]"}` }],
+    pausa: { desde: estado.pausa?.desde || ahora, ultimoDueno: ahora, motivo: "app" },
+  };
 }
 
 // ---------------------------------------------------------------------

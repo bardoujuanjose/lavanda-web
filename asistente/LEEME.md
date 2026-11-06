@@ -7,6 +7,7 @@ Un mismo servidor (Cloudflare Worker) con dos asistentes que usan Claude:
 | Chat de la web | `/chat` | Solo informa. Los problemas los manda a WhatsApp. |
 | WhatsApp (689 81 02 13) | `/whatsapp` | Informa, entiende fotos, gestiona incidencias y avisa al dueño. |
 | Panel de lavanderías | `/admin` | Alta, edición, conexión y activación de lavanderías (contraseña `ADMIN_CLAVE`). |
+| Alta de WhatsApp | `/alta/…` | Página para que el dueño conecte su número (enlace que genera el panel; registro integrado de Meta). |
 | Teléfono (Twilio) | `/voz` | Mismas normas que WhatsApp, hablando. Pasa la llamada al dueño en los casos difíciles. |
 
 ```

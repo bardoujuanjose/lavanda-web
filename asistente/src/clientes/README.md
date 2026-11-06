@@ -61,10 +61,18 @@ dos conversaciones separadas. Las conversaciones que ya existen de Lavanda se co
    partida: hay que cambiarlas por las de esa lavandería (sobre todo cómo cobra y cómo devuelve el dinero).
    **Vista previa** enseña las instrucciones que tendrían sus asistentes. Al guardar se valida todo y se avisa si
    quedan datos de otra lavandería (copiar y pegar). Se guarda como **borrador**: no afecta a nada.
-2. **Conexión de WhatsApp:** identificador de su número (Meta), móvil del dueño y token. El token se guarda
-   **cifrado** (secreto `CLAVE_CIFRADO`) y el panel no lo vuelve a enseñar.
-3. **WhatsApp en Meta:** su número tiene que estar en la app de Meta de este servidor, con el webhook `/whatsapp`
-   activado y su plantilla de avisos creada (nombre en la ficha).
+2. **Conectar su WhatsApp:** en la ficha, poner el **móvil del dueño** (recibe los avisos) y pulsar
+   **"Enlace para que el dueño conecte su WhatsApp"**. Se le manda ese enlace (caduca en 7 días): él entra con
+   **su** Facebook y elige su caso:
+   - **Su número ya usa la app WhatsApp Business** ("coexistencia"): sigue usando la app en su móvil. Cuando
+     contesta él desde la app, el asistente se calla con ese cliente (12 h, o hasta que escriba `#teléfono fin`).
+   - **Número nuevo o sin la app:** queda dedicado al asistente.
+
+   El servidor termina el alta solo (comprueba con Meta que el número es de esa cuenta, lo registra o sincroniza
+   la app, y guarda el token **cifrado**). **"Comprobar conexión"** dice si sigue funcionando.
+   Si hiciera falta, también se puede pegar un token a mano ("Conexión manual").
+3. **Pago en Meta:** el dueño tiene que añadir un método de pago en WhatsApp Manager
+   (business.facebook.com/wa/manage) si Meta se lo pide.
 4. **Voz (opcional):** comprar un número en Twilio, ponerlo en la ficha y configurar en él el webhook `/voz`.
 5. **Web (opcional):** poner el chat en su página y su dominio en la ficha.
 6. **Activar** desde la lista. Antes se comprueba que esté conectada y que no choque con otra (mismo número de
@@ -79,6 +87,23 @@ Lavanda es **fija** (archivo `lavanda.js`): se ve en el panel pero se cambia en 
 |---|---|
 | `ADMIN_CLAVE` | Contraseña del panel. Larga y distinta de `PRUEBA_CLAVE`. Tras 10 intentos fallidos, se bloquea 10 minutos. |
 | `CLAVE_CIFRADO` | Clave para cifrar los tokens (mínimo 16 caracteres, mejor 32 al azar). **No se puede cambiar** sin volver a conectar todos los WhatsApp. |
+
+### Lo que hay que hacer en Meta UNA sola vez (para que funcione el enlace de alta)
+
+Según la documentación de Meta (Embedded Signup v4, octubre de 2026):
+
+1. **Ser "Tech Provider"** en Meta con la empresa que venda el servicio (verificación del negocio y revisión
+   de la app). Sin esto, Meta no deja que otras empresas conecten su número a nuestra app.
+2. App de Meta → **Facebook Login for Business → Settings**: activar *Client OAuth login*, *Web OAuth login*,
+   *Enforce HTTPS*, *Embedded Browser OAuth Login*, *Use Strict Mode for redirect URIs* y *Login with the
+   JavaScript SDK*; y en **Allowed domains** y **Valid OAuth redirect URIs** poner
+   `lavanda-asistente.bardoujuanjose.workers.dev`.
+3. **Facebook Login for Business → Configurations → Create from template** → "WhatsApp Embedded Signup
+   Configuration…". Su identificador va en `META_CONFIG_ID` (`wrangler.toml`).
+4. El identificador de la app (arriba en el panel de Meta) va en `META_APP_ID`.
+5. **WhatsApp → Configuration → Webhooks:** además de `messages`, suscribir `account_update` y, para la
+   coexistencia, `history`, `smb_app_state_sync` y `smb_message_echoes`.
+6. `GRAPH_VERSION` (`wrangler.toml`) es `v23.0`; la documentación ya usa `v27.0`. Conviene subirla tras probar.
 
 ### Dar de alta una lavandería FIJA (en el código, como Lavanda)
 
@@ -114,8 +139,10 @@ Ejemplo de otro modo de cobro (tarjeta, devolución a la tarjeta, sin Bizum): `t
   No se hace antes de ver casos reales para no inventar una estructura que luego no sirva.
 - **La regla de dinero de Lavanda** (límite de 20 €, 48 h, ejemplos con las máquinas 3 y 4) está escrita dentro de
   `procedimientos`; es de Lavanda y no se aplica a otras.
-- **El token de WhatsApp se copia a mano en el panel.** Lo siguiente: el "registro integrado" de Meta (el dueño
-  conecta su número con un botón y el token llega solo).
+- **El alta por enlace está probada con Meta simulado** (formato de su documentación) y en un navegador, pero
+  **no con Meta de verdad**: hace falta completar los pasos de Meta de arriba y probarlo con un número real.
+- Coexistencia: el historial antiguo que manda Meta se acepta pero no se carga en la memoria del asistente; y si
+  Meta no envía el teléfono del cliente (solo su identificador), un mensaje del dueño desde la app no calla al asistente.
 - **Siguen siendo comunes a todas:** la clave de Claude, la app de Meta (`WHATSAPP_APP_SECRET`, token de
   verificación), la cuenta de Twilio y la voz de ElevenLabs.
 - **Pruebas con servicios reales:** el enrutado está probado con peticiones simuladas. Falta probarlo con una

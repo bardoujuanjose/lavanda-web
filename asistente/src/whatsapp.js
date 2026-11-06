@@ -65,6 +65,28 @@ export function extraerMensajes(payload) {
   return lista;
 }
 
+// Mensajes que el DUEÑO manda desde la app WhatsApp Business (solo con "coexistencia":
+// el mismo número en la app y en el asistente). Meta los avisa con el campo smb_message_echoes.
+export function extraerEcos(payload) {
+  const lista = [];
+  for (const entrada of payload?.entry || []) {
+    for (const cambio of entrada.changes || []) {
+      if (cambio.field !== "smb_message_echoes") continue;
+      const v = cambio.value || {};
+      for (const m of v.message_echoes || []) {
+        lista.push({
+          id: m.id,
+          numeroId: v.metadata?.phone_number_id || "",
+          para: m.to ? String(m.to) : "",    // Meta puede omitirlo si no tiene el teléfono del cliente
+          tipo: m.type,
+          texto: m.text?.body ?? m.image?.caption ?? (m.type ? `[${m.type}]` : ""),
+        });
+      }
+    }
+  }
+  return lista;
+}
+
 // ---------------------------------------------------------------------
 //  Cliente de la API de WhatsApp
 // ---------------------------------------------------------------------

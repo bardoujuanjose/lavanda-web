@@ -10,6 +10,7 @@
 // =====================================================================
 import { crearTextos } from "./negocio.js";
 import { cifrar } from "./cifrado.js";
+import { crearInvitacion, comprobarConexion } from "./alta.js";
 import { normalizarTelefono } from "./whatsapp.js";
 import { FICHA_LAVANDA } from "./clientes/lavanda.js";
 import {
@@ -106,7 +107,10 @@ function paraElPanel(guardada) {
   const { conexion, ...resto } = guardada;
   return {
     ...resto,
-    conexion: conexion ? { phoneId: conexion.phoneId || "", dueno: conexion.dueno || "", tieneToken: Boolean(conexion.tokenCifrado), wabaId: conexion.wabaId || "" } : null,
+    conexion: conexion ? {
+      phoneId: conexion.phoneId || "", dueno: conexion.dueno || "", tieneToken: Boolean(conexion.tokenCifrado), wabaId: conexion.wabaId || "",
+      modo: conexion.modo || "manual", numero: conexion.numero || "", pendientes: conexion.pendientes || [], conectadaEn: conexion.conectadaEn || "",
+    } : null,
   };
 }
 
@@ -126,7 +130,7 @@ function plantillaNueva() {
 // ---------------------------------------------------------------------
 //  Acciones
 // ---------------------------------------------------------------------
-async function accion(datos, env) {
+async function accion(datos, env, origen) {
   const almacen = almacenRegistro(env);
   if (!almacen) return json({ error: "Falta la base de datos (REGISTRO) en la configuración del servidor." }, 503);
   await prepararRegistro(env, { forzar: true });
@@ -236,6 +240,22 @@ async function accion(datos, env) {
       return json({ ok: true, avisos });
     }
 
+    // Enlace para que el DUEÑO conecte su WhatsApp con su cuenta de Facebook (caduca en 7 días)
+    case "invitacion": {
+      const g = await leerGuardada(datos.id);
+      if (!g) return json({ error: "No existe esa lavandería (o es fija)." }, 404);
+      if (!(env.CLAVE_CIFRADO && String(env.CLAVE_CIFRADO).length >= 16)) return json({ errores: ["Falta el secreto CLAVE_CIFRADO en Cloudflare."] }, 422);
+      const avisos = [];
+      if (!env.META_APP_ID || !env.META_CONFIG_ID) avisos.push("Falta configurar META_APP_ID y META_CONFIG_ID: la página del enlace dirá que todavía no está lista.");
+      return json({ enlace: `${origen}/alta/${await crearInvitacion(env, g.id)}`, caduca: "7 días", avisos });
+    }
+
+    // ¿Sigue funcionando su WhatsApp? (detecta tokens caducados o retirados)
+    case "comprobar": {
+      if (!idsDeClientes().includes(String(datos.id))) return json({ error: "No existe esa lavandería (o su ficha tiene errores)." }, 404);
+      return json(await comprobarConexion(env, conexionDe(env, obtenerCliente(env, String(datos.id)))));
+    }
+
     case "borrar": {
       const g = await leerGuardada(datos.id);
       if (!g) return json({ error: "No existe esa lavandería (o es fija)." }, 404);
@@ -275,7 +295,7 @@ export async function atenderAdmin(request, env, ahora = Date.now()) {
   let datos;
   try { datos = await request.json(); } catch { return json({ error: "Petición no válida." }, 400); }
   try {
-    return await accion(datos || {}, env);
+    return await accion(datos || {}, env, new URL(request.url).origin);
   } catch (e) {
     console.error("Panel: error:", e?.message || e);
     return json({ error: "Error del servidor: " + (e?.message || e) }, 500);
@@ -356,7 +376,17 @@ const PAGINA = `<!doctype html>
     <form id="fFicha"></form>
     <div class="tarjeta" id="tarjetaConexion">
       <h2>Conexión de WhatsApp</h2>
-      <p class="ayuda">El número de WhatsApp de esta lavandería. El token se guarda cifrado y no se vuelve a mostrar.</p>
+      <p id="cInfo" class="ayuda"></p>
+      <div class="fila">
+        <button class="prim" id="bInvitacion" type="button">Enlace para que el dueño conecte su WhatsApp</button>
+        <button id="bComprobar" type="button">Comprobar conexión</button>
+      </div>
+      <div id="cEnlaceCaja" hidden style="margin-top:10px">
+        <label>Envía este enlace al dueño <small>(caduca en 7 días; entra con SU Facebook)</small></label>
+        <div class="fila"><input id="cEnlace" readonly style="flex:1;min-width:200px"><button id="bCopiar" type="button">Copiar</button></div>
+      </div>
+      <h2>Conexión manual</h2>
+      <p class="ayuda">Solo si ya tienes el token (por ejemplo, para pruebas). El token se guarda cifrado y no se vuelve a mostrar. El móvil del dueño sí hay que ponerlo aquí aunque conecte con el enlace.</p>
       <div class="rejilla">
         <div><label>Identificador del número (Meta) <small>phone_number_id</small></label><input id="cPhone" inputmode="numeric"></div>
         <div><label>Móvil del dueño <small>recibe los avisos</small></label><input id="cDueno" inputmode="tel"></div>
@@ -555,6 +585,13 @@ const PAGINA = `<!doctype html>
     $("cTokenInfo").textContent = con.tieneToken ? "(guardado; déjalo vacío para mantenerlo)" : "(todavía no hay)";
     $("cEstado").textContent = con.tieneToken && con.phoneId ? "Conectado" : "Sin conectar";
     $("cEstado").className = "chip " + (con.tieneToken && con.phoneId ? "ok" : "mal");
+    $("cEnlaceCaja").hidden = true;
+    var info = con.tieneToken && con.phoneId
+      ? "Conectado" + (con.numero ? " el " + con.numero : "") + (con.modo === "coexistencia" ? " · comparte número con la app WhatsApp Business del dueño" : con.modo === "cloud" ? " · número dedicado al asistente" : " · a mano") + (con.conectadaEn ? " · " + con.conectadaEn.slice(0, 10) : "") + "."
+      : "Sin conectar. Lo normal es mandar al dueño el enlace de abajo: él conecta su número con su cuenta de Facebook.";
+    if (con.pendientes && con.pendientes.length) info += " ⚠️ Quedó pendiente: " + con.pendientes.join(", ") + ".";
+    if (!con.dueno) info += " Falta el móvil del dueño (abajo).";
+    $("cInfo").textContent = info;
     window.scrollTo(0, 0);
   }
 
@@ -589,6 +626,30 @@ const PAGINA = `<!doctype html>
       b.disabled = false; $("msgEditor").textContent = "";
       if (j._estado !== 200) { mensajes($("msgEditor"), j.errores || [j.error], "error"); window.scrollTo(0, 0); return; }
       abrir(actual.id, ["Conexión guardada."]);
+    });
+  });
+
+  $("bInvitacion").addEventListener("click", function () {
+    api("invitacion", { id: actual.id }).then(function (j) {
+      $("msgEditor").textContent = "";
+      if (j._estado !== 200) { mensajes($("msgEditor"), j.errores || [j.error], "error"); window.scrollTo(0, 0); return; }
+      $("cEnlace").value = j.enlace; $("cEnlaceCaja").hidden = false;
+      mensajes($("msgEditor"), j.avisos, "aviso");
+    });
+  });
+  $("bCopiar").addEventListener("click", function () {
+    var b = this;
+    $("cEnlace").select();
+    (navigator.clipboard ? navigator.clipboard.writeText($("cEnlace").value) : Promise.reject()).then(
+      function () { b.textContent = "Copiado"; }, function () { try { document.execCommand("copy"); b.textContent = "Copiado"; } catch (e) {} });
+  });
+  $("bComprobar").addEventListener("click", function () {
+    var b = this; b.disabled = true;
+    api("comprobar", { id: actual.id }).then(function (j) {
+      b.disabled = false; $("msgEditor").textContent = "";
+      if (j.ok) mensajes($("msgEditor"), ["WhatsApp funciona: " + (j.numero || "") + (j.nombre ? " (" + j.nombre + ")" : "") + (j.conApp ? " · también en la app WhatsApp Business" : "") + (j.calidad ? " · calidad " + j.calidad : "")], "bien");
+      else mensajes($("msgEditor"), ["WhatsApp NO funciona: " + (j.error || "error desconocido") + ". Si el token ha caducado o se ha retirado, manda al dueño un enlace nuevo."], "error");
+      window.scrollTo(0, 0);
     });
   });
 

@@ -5,12 +5,14 @@
 //   /voz       -> llamadas de teléfono (Twilio)
 //   /prueba    -> chat de pruebas del asistente de WhatsApp (con contraseña)
 //   /admin     -> panel para dar de alta y editar lavanderías (con contraseña)
+//   /alta/…    -> página para que el dueño conecte su WhatsApp (enlace firmado que genera el panel)
 // =====================================================================
 import { atenderChatWeb } from "./web.js";
 import { atenderWhatsApp } from "./webhook.js";
 import { atenderPrueba } from "./prueba.js";
 import { atenderVoz } from "./voz.js";
 import { atenderAdmin } from "./admin.js";
+import { atenderAlta } from "./alta.js";
 import { prepararRegistro } from "./clientes/index.js";
 
 export { Conversacion } from "./conversacion.js";
@@ -22,6 +24,7 @@ export default {
     // Lavanderías dadas de alta en el panel (con caché; si falla, se sigue con las que había)
     await prepararRegistro(env);
     if (pathname === "/admin" || pathname.startsWith("/admin/")) return atenderAdmin(request, env);
+    if (pathname.startsWith("/alta/")) return atenderAlta(request, env);
     if (pathname === "/chat") return atenderChatWeb(request, env);
     if (pathname === "/whatsapp") return atenderWhatsApp(request, env);
     if (pathname === "/voz" || pathname.startsWith("/voz/")) return atenderVoz(request, env, ctx);

@@ -7,7 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { clienteWhatsApp } from "./whatsapp.js";
 import { obtenerCliente, entornoDe, prepararRegistro } from "./clientes/index.js";
 import {
-  ESPERA_MS, estadoInicial, procesarPendientes, aplicarResultado, comandoDueno,
+  ESPERA_MS, estadoInicial, procesarPendientes, aplicarResultado, comandoDueno, ecoDelDueno,
 } from "./asistente-whatsapp.js";
 
 // Convierte un audio de WhatsApp en texto con el modelo Whisper de Cloudflare (Workers AI)
@@ -103,6 +103,13 @@ export class Conversacion extends DurableObject {
   }
   async guardarConfig(clave, valor) {
     await this.ctx.storage.put("config:" + clave, valor);
+  }
+
+  // El dueño ha contestado desde la app WhatsApp Business: el asistente se calla con este cliente
+  async eco(texto, clienteId) {
+    await prepararRegistro(this.env);
+    const cliente = obtenerCliente(this.env, clienteId);
+    await this.guardarResultado(ecoDelDueno({ estado: await this.leerEstado(), texto, cliente }));
   }
 
   // El dueño escribe "#telefono texto" o "#telefono fin"

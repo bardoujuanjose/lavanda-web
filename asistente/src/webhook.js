@@ -1,7 +1,7 @@
 // =====================================================================
 //  Entrada de WhatsApp: Meta avisa aquí de cada mensaje nuevo
 // =====================================================================
-import { firmaValida, extraerMensajes, normalizarTelefono, clienteWhatsApp } from "./whatsapp.js";
+import { firmaValida, extraerMensajes, extraerEcos, normalizarTelefono, clienteWhatsApp } from "./whatsapp.js";
 import { leerComandoDueno, textoAyudaDueno } from "./asistente-whatsapp.js";
 import { buscarClientePorWhatsApp, entornoDe, nombreMemoria } from "./clientes/index.js";
 
@@ -56,6 +56,17 @@ export async function atenderWhatsApp(request, env) {
       await conversacion(env, cliente, m.de).recibir(m, cliente.ficha.id);
     } catch (e) {
       console.error("WhatsApp: no se pudo procesar un mensaje:", e?.message || e);
+    }
+  }
+
+  // 4) El dueño ha contestado desde la app WhatsApp Business ("coexistencia"): el asistente se calla con ese cliente
+  for (const e of extraerEcos(payload)) {
+    try {
+      const cliente = buscarClientePorWhatsApp(env, e.numeroId);
+      if (!cliente || !e.para) continue;
+      await conversacion(env, cliente, e.para).eco(e.texto, cliente.ficha.id);
+    } catch (err) {
+      console.error("WhatsApp: no se pudo procesar un mensaje del dueño desde la app:", err?.message || err);
     }
   }
 
