@@ -4,9 +4,9 @@ Resumen para retomar el trabajo en una conversación nueva.
 Lavanda: lavandería autoservicio, Avda. Baix Penedès 33, 43700 El Vendrell.
 Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou (Juanjo).
 
-## Cómo se publica el Worker: Cloudflare Workers Builds conectado a GitHub (bardoujuanjose/lavanda-web), rama de producción main, directorio raíz asistente, comando npx wrangler deploy. Fusionar en main publica. Las ramas dan error en la vista previa de Cloudflare (falta el bloque [previews] en wrangler.toml); no afecta a producción.
+**Cómo se publica el Worker:** Cloudflare Workers Builds conectado a GitHub (bardoujuanjose/lavanda-web), rama de producción main, directorio raíz asistente, comando npx wrangler deploy. Fusionar en main publica. Las ramas dan error en la vista previa de Cloudflare (falta el bloque [previews] en wrangler.toml); no afecta a producción.
 
-Qué hay funcionando
+## Qué hay funcionando
 
 | Pieza | Dónde | Notas |
 |---|---|---|
