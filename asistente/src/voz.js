@@ -118,6 +118,11 @@ export async function atenderVoz(request, env, ctx) {
     const k = url.searchParams.get("k");
     cliente = k ? obtenerCliente(env, k) : buscarClientePorVoz(env, p.To);
   } catch { /* lavandería desconocida */ }
+  // La llamada de prueba desde /prueba (el navegador, protegido por clave) no marca ningún número de Twilio:
+  // se atiende con la lavandería por defecto (Lavanda), aunque haya varias activas.
+  if (!cliente && String(p.From || "").startsWith("client:")) {
+    try { cliente = obtenerCliente(env); } catch { /* sin lavandería por defecto */ }
+  }
   if (!cliente) {
     console.error(`Voz: llamada al número ${p.To || "(desconocido)"}, que no es de ninguna lavandería`);
     return twiml(decir("Este número no está disponible. Gracias por llamar.", env) + "<Hangup/>");
