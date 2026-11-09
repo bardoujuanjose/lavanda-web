@@ -42,9 +42,12 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
    - **Decisión (09/11/2026): Lavanda usa el asistente de voz propio (`/voz`), no Retell.** Mismas normas que WhatsApp
      (una sola fuente: `negocio.js` / ficha), voz de Sofía (ElevenLabs), pasa la llamada al móvil del dueño en los casos
      difíciles y avisa por WhatsApp. Retell queda fuera de Lavanda (no tener dos asistentes de voz ni normas duplicadas).
-   - **Sin verificar**: un resumen de otro chat (Claude normal, 09/11/2026) dice que el paquete regulatorio de Twilio ya está
-     aprobado y que se pidió un número +34 977 de voz (5,50 $/mes), con un trunk SIP `retell-limpoi` creado para Retell.
-     Comprobar en Twilio el estado del paquete y si hay un número comprado; si el trunk es de Limpoi, no mezclarlo con Lavanda.
+   - **Comprobado por Juanjo (09/11/2026)**: el paquete regulatorio de Twilio ("Lavanda", España, Individual, Local) está **aprobado**.
+     **Todavía no hay número comprado** en Active numbers (un resumen de otro chat hablaba de un 977 pedido; si hubo un pedido en curso,
+     comprobar el email de Twilio antes de comprar otro, para no duplicarlo). El trunk SIP `retell-limpoi` (creado para Retell) parece
+     de Lavanda, pero por el nombre podría ser de Limpoi; **no se usa**, porque Lavanda no usa Retell. Dejarlo sin tocar.
+   - **Siguiente paso**: comprar el número (España, Voice, Local, prefijo 977, 5,50 $/mes aprox.) con el paquete aprobado, ponerlo en
+     Voice → A call comes in → Webhook `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST) y probar llamando desde un móvil.
    - **Desvío en Movistar, por decidir**: `**61*NUMERO**20#` (solo si no contestas en 20 s) o `**21*NUMERO#` (todas las
      llamadas al asistente; el dueño ya no recibe ninguna directamente). Se cancela con `##002#` / `##61#`. El 689 810 213 no se porta.
    - Ideas acordadas, por orden: (1) normas en un archivo de texto sin código, (2) página privada con las transcripciones de
