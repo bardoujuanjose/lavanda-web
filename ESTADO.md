@@ -32,7 +32,7 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
 
 1. Twilio: cuando el número 977 aparezca en Active numbers, poner el webhook `/voz` y probar con una llamada (pendiente A1).
 2. ~~Arreglos del asistente de WhatsApp~~ (tono, "¿Ya arranca?" y caso F publicados el 09/11/2026). Vigilar las conversaciones estos días.
-3. Claude Console: límite de gasto mensual (pendiente A11, 5 min).
+3. ~~Claude Console: límite de gasto mensual~~ (hecho: 10 USD/mes; saldo recargado el 09/11/2026).
 4. Google Maps: horario 8:00–21:00 (pendiente A8, 5 min).
 5. DonDominio: renovación automática (pendiente A9).
 6. Imprimir y colocar el cartel con el QR (pendiente A5).
@@ -117,7 +117,7 @@ detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene
 8. **Google Maps:** corregir horario (pone cierre 22:00; es 8:00–21:00), añadir descripción, redes y fotos.
 9. **DonDominio:** renovación del dominio en automática (caduca el 04/11/2027).
 10. **Meta:** plantilla `aviso_lavanda` (Utilidad, español, cuerpo `Nuevo aviso de Lavanda: {{1}}`) y método de pago.
-11. **Claude Console:** límite de gasto mensual.
+11. ~~**Claude Console:** límite de gasto mensual~~ (hecho: 10 USD/mes; saldo recargado el 09/11/2026).
 12. **Facebook: recuperar el control total de la página** (en pausa; no es urgente).
     - El único admin con control total ("Lavanda Aguas") ya no existe; Carmen tiene acceso parcial.
     - Meta pide una "Disputa de administrador de página" (https://www.facebook.com/business-support-home/contact-support) con el PDF de
