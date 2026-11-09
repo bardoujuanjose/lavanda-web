@@ -27,36 +27,60 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
 
 ## Pendiente
 
-1. **Facebook: recuperar el control total de la página** (en curso).
-   - El único admin con control total ("Lavanda Aguas") ya no existe; Carmen tiene acceso parcial.
-   - Meta pide abrir una "Disputa de administrador de página" en
-     https://www.facebook.com/business-support-home/contact-support y subir el PDF de documentación
-     (carta firmada por Carmen, su DNI, recibo de autónomos y anexo). El PDF lo tienen Juanjo/Carmen.
-   - Requisito: autenticación en dos pasos activada y sin restricciones en el perfil de quien será admin.
-     A Carmen no le deja activarla todavía (revisar "Estado de la cuenta"). Plan B: pedir el control para Juanjo.
-2. **Twilio**: número español local pedido. El primer paquete regulatorio ("Lavanda", Individual) se rechazó
-   (DNI de una sola cara y datos/dirección que no coincidían). Reenviado a nombre de Carmen María Mondejar
-   Castejón, con su DNI (dos caras en un PDF) y la dirección de su DNI. Pendiente de nueva revisión. Cuando se apruebe:
-   Voice → A call comes in → Webhook `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST),
-   probar llamando desde un móvil y activar desvío en Movistar (`**61*NUMERO**20#`).
-   - **Decisión (09/11/2026): Lavanda usa el asistente de voz propio (`/voz`), no Retell.** Mismas normas que WhatsApp
-     (una sola fuente: `negocio.js` / ficha), voz de Sofía (ElevenLabs), pasa la llamada al móvil del dueño en los casos
-     difíciles y avisa por WhatsApp. Retell queda fuera de Lavanda (no tener dos asistentes de voz ni normas duplicadas).
-   - **Comprobado por Juanjo (09/11/2026)**: el paquete regulatorio de Twilio ("Lavanda", España, Individual, Local) está **aprobado**.
-     **El número 977 ya está pedido** (hecho en otro chat; 5,50 $/mes, entrega estimada de 1 a 24 horas), pero a 09/11/2026 todavía no
-     aparece en Active numbers. **No comprar otro.** El trunk SIP `retell-limpoi` (creado para Retell) parece de Lavanda, pero por el
-     nombre podría ser de Limpoi; **no se usa**, porque Lavanda no usa Retell. Dejarlo sin tocar.
-   - **Siguiente paso**: cuando el número aparezca en Active numbers, ponerlo en Voice → A call comes in → Webhook
+Lista única, ordenada el 09/11/2026 (incluye lo que había en un resumen de otro chat de Claude normal).
+**Fuente de verdad de los datos de Lavanda:** `asistente/src/clientes/lavanda.js`. Ese resumen tenía datos antiguos
+(M 10 kg, L 14 kg, "solo detergente y suavizante", tarjeta "solo si preguntan"); los correctos son M 14 kg, L 16 kg,
+detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene a cuento.
+
+### A) Lavanda
+
+1. **Voz y Twilio** (en curso)
+   - **Decisión (09/11/2026): Lavanda usa el asistente de voz propio (`/voz`), no Retell.** Mismas normas que WhatsApp, voz de Sofía
+     (ElevenLabs), pasa la llamada al móvil del dueño en los casos difíciles y avisa por WhatsApp.
+   - Paquete regulatorio de Twilio ("Lavanda", España, Individual, Local): **aprobado**. **El número 977 ya está pedido** (5,50 $/mes,
+     entrega estimada de 1 a 24 h); a 09/11/2026 aún no aparece en Active numbers. **No comprar otro.**
+   - **Siguiente paso:** cuando aparezca en Active numbers: Voice → A call comes in → Webhook
      `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST) y probar llamando desde un móvil.
-   - **Desvío en Movistar, por decidir**: `**61*NUMERO**20#` (solo si no contestas en 20 s) o `**21*NUMERO#` (todas las
-     llamadas al asistente; el dueño ya no recibe ninguna directamente). Se cancela con `##002#` / `##61#`. El 689 810 213 no se porta.
-   - Ideas acordadas, por orden: (1) normas en un archivo de texto sin código, (2) página privada con las transcripciones de
-     llamadas y WhatsApp, (3) grabación de audio solo si se quiere (requiere avisar al cliente y actualizar la política de privacidad).
-3. **Google Maps**: corregir horario (pone cierre 22:00; es 8:00–21:00), añadir descripción y redes.
-4. **DonDominio**: poner la renovación del dominio en automática (caduca el 04/11/2027).
-5. **Meta**: plantilla `aviso_lavanda` (Utilidad, español, cuerpo `Nuevo aviso de Lavanda: {{1}}`) y método de pago.
-6. ~~**GitHub Pages**: marcar "Enforce HTTPS"~~ (hecho).
-7. **Claude Console**: poner límite de gasto mensual.
+   - El trunk SIP `retell-limpoi` (creado para Retell) no se usa; dejarlo sin tocar. Puede ser de Limpoi.
+   - **Desvío en Movistar, por decidir:** `**61*NUMERO**20#` (solo si no contestas en 20 s) o `**21*NUMERO#` (todas las llamadas al
+     asistente; el dueño ya no recibe ninguna directamente). Se cancela con `##002#` / `##61#`. El 689 810 213 no se porta.
+   - **Decidir:** portar el 977 de la tienda que no se usa o quedarse con el nuevo de Twilio.
+   - Mejoras acordadas, por orden: (1) normas en un archivo de texto sin código, (2) página privada con las transcripciones de llamadas
+     y WhatsApp, (3) grabación de audio solo si se quiere (requiere avisar al cliente y actualizar la política de privacidad).
+2. **Los dos arreglos del asistente de WhatsApp** que Juanjo quería enseñar: **por contar** (aún no los ha dicho).
+3. **Datos que faltan para los asistentes:** pasos del programa 100 (centrifugado extra), protocolo del corte de luz y si el
+   aparcamiento es zona azul (hoy el asistente no dice nada de esto).
+4. **Aviso de protección de datos** cuando el asistente pide nombre o teléfono (y en la política de privacidad si se graban llamadas).
+5. **Cartel A4 con QR de WhatsApp** (ya verificado): imprimir y colocar en el local.
+6. **Documentos:** subir a Drive las versiones nuevas (instrucciones del chat v16, de voz v3, pruebas de límite v15) y actualizar el
+   documento de Instagram, que aún dice "Lavanda" y "Resuelto en un minuto" (revisar con Juanjo qué debe decir).
+7. **Botpress:** dar de baja la suscripción, si hay plan de pago, unos días después de ver estable el asistente nuevo (ya está apagado).
+8. **Google Maps:** corregir horario (pone cierre 22:00; es 8:00–21:00), añadir descripción, redes y fotos.
+9. **DonDominio:** renovación del dominio en automática (caduca el 04/11/2027).
+10. **Meta:** plantilla `aviso_lavanda` (Utilidad, español, cuerpo `Nuevo aviso de Lavanda: {{1}}`) y método de pago.
+11. **Claude Console:** límite de gasto mensual.
+12. **Facebook: recuperar el control total de la página** (en pausa; no es urgente).
+    - El único admin con control total ("Lavanda Aguas") ya no existe; Carmen tiene acceso parcial.
+    - Meta pide una "Disputa de administrador de página" (https://www.facebook.com/business-support-home/contact-support) con el PDF de
+      documentación (carta firmada por Carmen, su DNI, recibo de autónomos y anexo). Requisito: autenticación en dos pasos y sin
+      restricciones en el perfil de quien será admin; a Carmen no le deja activarla. Plan B: pedir el control para Juanjo.
+
+### B) Producto para otras lavanderías (Limpoi)
+
+Limpoi es el nombre del producto. Detalles en la sección siguiente.
+- Montar el **asistente comercial** (instrucciones v1: preguntas previas, demo y aviso con los datos del contacto) en nuestro servidor
+  (no en Botpress) y una SIM aparte para su WhatsApp.
+- Comprobar que **Limpoi** está libre en Instagram, Google, OEPM y dominio.
+- Lanzar **anuncios** con poco presupuesto (5-10 € al día durante 7 días) y comparar mensajes. Hay imagen 4:5, tres vídeos y una landing
+  publicada sin precio (el precio se dice después, en conversación).
+- **Verificación de negocio en Meta** y decidir qué entidad la hace (ver la sección siguiente).
+- Revisar si se puede **revender** el servicio y el aviso de protección de datos para otras lavanderías.
+
+### C) Hecho o descartado
+
+- ✅ Probar la voz con una llamada desde el navegador.
+- ✅ Enforce HTTPS en GitHub Pages.
+- ❌ Retell para Lavanda (descartado el 09/11/2026).
 
 ## Producto para otras lavanderías (en marcha)
 
