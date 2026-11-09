@@ -26,6 +26,58 @@ Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou
 Secretos (en Cloudflare, nunca en el repo): ANTHROPIC_API_KEY, WHATSAPP_TOKEN, WHATSAPP_PHONE_ID,
 WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, ADMIN_CLAVE, CLAVE_CIFRADO (estos dos creados el 06/11/2026).
 
+## Esta semana (9–15/11/2026)
+
+1. Twilio: cuando el número 977 aparezca en Active numbers, poner el webhook `/voz` y probar con una llamada (pendiente A1).
+2. Los dos arreglos del asistente de WhatsApp (pendiente A2).
+3. Claude Console: límite de gasto mensual (pendiente A11, 5 min).
+4. Google Maps: horario 8:00–21:00 (pendiente A8, 5 min).
+5. DonDominio: renovación automática (pendiente A9).
+6. Imprimir y colocar el cartel con el QR (pendiente A5).
+
+## Quién controla qué
+
+"Por confirmar" = falta saber a nombre de quién está la cuenta.
+
+| Servicio | Quién | Notas |
+|---|---|---|
+| GitHub (`bardoujuanjose`) | Juanjo | Copia de trabajo en el PC de Juanjo (Documentos\lavanda-web, con Git desde el 09/11/2026). |
+| Cloudflare (Worker `lavanda-asistente`) | Por confirmar | Aquí están los secretos. |
+| DonDominio (dominio) | Por confirmar | Caduca el 04/11/2027. |
+| Twilio | Por confirmar | Paquete regulatorio "Individual". Para Limpoi, a nombre de la empresa de Juanjo. |
+| Meta: app "Lavanda Asistente" y WhatsApp | Portfolio "Lavanda Laundry El Vendrell" (sin verificar) | WhatsApp +34 689 81 02 13. |
+| Instagram @lavandavendrell | Cuenta de Meta de Juanjo | |
+| Facebook (página) | Nadie con control total; Carmen con acceso parcial | Ver pendiente A12. |
+| Google Maps | Juanjo propietario principal, Carmen propietaria | |
+| Google Search Console | Por confirmar | |
+| ImprovMX (correo) | Por confirmar | |
+| Anthropic (Claude Console) | Por confirmar | |
+| ElevenLabs (voz) | Por confirmar | |
+| Botpress | Por confirmar | Apagado; dar de baja (A7). |
+
+## Gastos y suscripciones
+
+| Servicio | Coste | Notas |
+|---|---|---|
+| Twilio | 5,50 $/mes por el número + minutos | |
+| Anthropic | Por uso | Sin límite de gasto todavía (A11). |
+| ElevenLabs | Por confirmar | |
+| Cloudflare Workers | Por confirmar (gratis o de pago) | |
+| Meta / WhatsApp | Por confirmar | Falta el método de pago (A10). |
+| DonDominio | Anual, por confirmar | |
+| Botpress | Por confirmar | Dar de baja si es de pago (A7). |
+| GitHub Pages, ImprovMX | Gratis | |
+
+## Documentos y versiones
+
+- **La fuente de verdad es este repo** (`asistente/src/clientes/lavanda.js` y `asistente/src/negocio.js`). Los .txt de
+  instrucciones son copias para leer o subir a Drive.
+- En el PC hay muchas versiones viejas en Descargas (instrucciones v2 a v14, varias repetidas con "(1)" y "(2)";
+  chat v15 y v16; pruebas v14) y archivos de la época de Botpress en Documentos\Baile. Propuesta: una carpeta
+  `Lavanda/actual` con la última versión de cada documento y `Lavanda/archivo` para el resto. Los PDF con
+  documentos personales (carta y documentación para Meta) en una carpeta privada, no en Descargas.
+- Por confirmar: dónde están "voz v3" y "pruebas v15" (en el PC solo aparece pruebas v14).
+
 ## Pendiente
 
 Lista única, ordenada el 09/11/2026 (incluye lo que había en un resumen de otro chat de Claude normal).
