@@ -59,10 +59,23 @@ function limpiarHistorial(h) {
   return limpio;
 }
 
+// Cuándo publicó Cloudflare la versión que está funcionando (binding CF_VERSION_METADATA de wrangler.toml).
+// Sirve para saber, antes de probar, si el último cambio ya está publicado.
+export function versionPublicada(env, ahora = Date.now()) {
+  const t = Date.parse(env?.CF_VERSION_METADATA?.timestamp || "");
+  if (!t) return "desconocida";
+  const fmt = (ms, o) => new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", ...o }).format(new Date(ms));
+  const dia = (ms) => fmt(ms, { year: "numeric", month: "2-digit", day: "2-digit" });
+  const hora = fmt(t, { hour: "2-digit", minute: "2-digit" });
+  if (dia(t) === dia(ahora)) return "hoy " + hora;
+  if (dia(t) === dia(ahora - 86_400_000)) return "ayer " + hora;
+  return fmt(t, { day: "numeric", month: "short" }) + " " + hora;
+}
+
 export async function atenderPrueba(request, env) {
   const { pathname } = new URL(request.url);
   if (pathname === "/prueba" && request.method === "GET") {
-    return new Response(PAGINA, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+    return new Response(PAGINA.replace("__PUBLICADO__", versionPublicada(env)), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
   }
   const rutas = ["/prueba/mensaje", "/prueba/whatsapp-estado", "/prueba/whatsapp-conectar", "/prueba/whatsapp-mensajes", "/prueba/twilio-estado", "/prueba/llamada-token"];
   if (!rutas.includes(pathname) || request.method !== "POST") return json({ error: "No encontrado" }, 404);
@@ -204,7 +217,7 @@ const PAGINA = `<!doctype html>
 </head>
 <body>
 <header>
-  <div class="t"><b>Lavanda · prueba del asistente</b><small>Escribe como si fueras un cliente</small></div>
+  <div class="t"><b>Lavanda · prueba del asistente</b><small>Escribe como si fueras un cliente · Versión publicada: __PUBLICADO__</small></div>
   <button id="llamar" type="button">📞 Llamar</button>
   <button id="twilio" type="button">Twilio</button>
   <button id="conexion" type="button">WhatsApp</button>
