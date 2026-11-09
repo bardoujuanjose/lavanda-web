@@ -136,6 +136,8 @@ export async function atenderPrueba(request, env) {
     : [];
   const estado = {
     historial: limpiarHistorial(body.historial),
+    // la página guarda la conversación en el navegador: si trae historial, es la misma conversación
+    ultimo: Array.isArray(body.historial) && body.historial.length ? Date.now() : 0,
     pausa: body.pausa ? { desde: Date.now(), ultimoDueno: null } : null,
     avisos,
   };

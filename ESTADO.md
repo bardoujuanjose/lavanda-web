@@ -145,6 +145,15 @@ Limpoi es el nombre del producto. Detalles en la sección siguiente.
 
 ## Producto para otras lavanderías (en marcha)
 
+**09/11/2026: la plataforma se separa de Lavanda.** Repositorio nuevo **`bardoujuanjose/limpoi`** (privado): la
+plataforma ("Limpoi", nombre provisional) en la que cada lavandería es un cliente; **Lavanda será su cliente nº 1**
+y se importa desde el panel como cualquier otra (sus instrucciones salen idénticas). Dos servidores: `limpoi`
+(rama `main`) y `limpoi-pruebas` (rama `pruebas`), cada uno con su base de datos. **Todavía no están puestos en
+marcha en Cloudflare** y Lavanda sigue atendida por este repositorio (`lavanda-asistente`) hasta la mudanza.
+Pasos de puesta en marcha y plan de mudanza: README de `limpoi`. A partir de ahora, **las mejoras del producto se
+hacen en `limpoi`**; aquí solo lo imprescindible para Lavanda hasta que se mude.
+
+
 Idea: vender el asistente (web + WhatsApp + voz) a lavanderías autoservicio de toda España. Plan comentado: suscripción
 (Básico ≈ 39 €/mes con web y WhatsApp; Completo ≈ 89 €/mes con voz y panel; precios por validar), pilotos con 2-3
 lavanderías, distribuidores de maquinaria como canal. Para la voz, un número de Twilio por lavandería (a nombre de la

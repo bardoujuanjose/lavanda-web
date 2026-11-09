@@ -8,6 +8,15 @@ import { ERROR_FUERA_DE_24H, normalizarTelefono } from "./whatsapp.js";
 export const MODELO = "claude-opus-5-5";
 export const ESPERA_MS = 3000;                  // espera por si el cliente manda varios mensajes seguidos
 export const HISTORIAL_MAX = 30;                // mensajes que recuerda de cada cliente
+// Conversación nueva: lo anterior deja de pasarse a Claude (no se borra de la página de conversaciones).
+// Antes era solo una instrucción del texto y Claude a veces volvía a sacar temas viejos (09/11/2026).
+export const CONVERSACION_NUEVA_MS = 6 * 60 * 60 * 1000;   // si pasan más de 6 h desde el último mensaje
+const SOLO_SALUDO = /^(hola+|holi|buenas|buenas tardes|buenas noches|buenos d[ií]as|bon dia|bona tarda|bona nit|bon vespre|hey|ey|hello|hi)$/;
+// "Hola", "¡Buenas tardes!", "hola 👋"… (sin preguntas ni nada más)
+export function esSoloSaludo(texto) {
+  const limpio = String(texto || "").toLowerCase().replace(/[\s¡!¿?.,;:)(\p{Extended_Pictographic}\u200d\ufe0f]+/gu, " ").trim();
+  return SOLO_SALUDO.test(limpio);
+}
 export const PAUSA_MAX_MS = 12 * 60 * 60 * 1000; // si nadie del equipo escribe en 12 h, el asistente vuelve
 const FOTO_MAX_BYTES = 5 * 1024 * 1024;
 const TIPOS_FOTO = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -136,7 +145,7 @@ export async function avisarDueno({ env, wa, telefono, nombre, motivo, resumen, 
 export async function procesarPendientes({ estado, pendientes, telefono, nombre, wa, claude, env, transcribir, ahora = Date.now(), cliente = obtenerCliente(env) }) {
   const { ficha, textos } = cliente;
   const HERRAMIENTA_AVISO = textos.HERRAMIENTA_AVISO;
-  const resultado = { anadir: [], pausa: undefined };
+  const resultado = { anadir: [], pausa: undefined, ultimo: ahora };
   let pausa = estado.pausa;
   if (pausaCaducada(pausa, ahora)) { pausa = null; resultado.pausa = null; }
 
@@ -215,10 +224,15 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
     }
   }
 
+  // ¿Conversación nueva? Si el cliente solo saluda o si hace más de 6 h del último mensaje, Claude no ve lo anterior
+  const soloSaludo = pendientes.every((p) => p.tipo === "text") && esSoloSaludo(pendientes.map((p) => p.texto).join(" "));
+  const nueva = soloSaludo || !estado.ultimo || ahora - estado.ultimo > CONVERSACION_NUEVA_MS;
+  if (nueva) resultado.nueva = true;
+
   const avisosPrevios = (estado.avisos || []).filter((a) => ahora - (a.cuando || 0) < AVISO_CADUCA_MS);
   const enviadosAhora = [];
   const mensajes = [
-    ...estado.historial,
+    ...(nueva ? [] : estado.historial),
     { role: "user", content: bloques },
     {
       role: "system",
@@ -305,7 +319,8 @@ export async function procesarPendientes({ estado, pendientes, telefono, nombre,
 
 // Añade a la memoria y la recorta (empezando siempre por un mensaje del cliente)
 export function aplicarResultado(estado, resultado) {
-  const nuevo = { ...estado, historial: [...estado.historial, ...resultado.anadir] };
+  const nuevo = { ...estado, historial: [...(resultado.nueva ? [] : estado.historial), ...resultado.anadir] };
+  if (resultado.ultimo) nuevo.ultimo = resultado.ultimo;
   if (resultado.pausa !== undefined) nuevo.pausa = resultado.pausa;
   nuevo.avisos = [...(estado.avisos || []), ...(resultado.avisos || [])].slice(-20);
   nuevo.historial = nuevo.historial.slice(-HISTORIAL_MAX);
