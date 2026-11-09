@@ -81,15 +81,29 @@ test("Lavanda no se puede modificar desde el panel", async () => {
   assert.equal((await panel("borrar", { id: "lavanda" })).estado, 404);
 });
 
-test("una ficha incompleta o mal escrita no se guarda, y se explica por qué", async () => {
-  const r = await panel("guardar", { ficha: { ...PEPITO_BD, id: "Pepito Reus", nombre: "", numerosVoz: ["977"], origenesPermitidos: ["pepitolava.es"] }, nueva: true });
+test("una ficha MAL ESCRITA no se guarda, y se explica por qué", async () => {
+  const r = await panel("guardar", { ficha: { ...PEPITO_BD, id: "Pepito Reus", numerosVoz: ["977"], origenesPermitidos: ["pepitolava.es"] }, nueva: true });
   assert.equal(r.estado, 422);
   const t = r.errores.join("\n");
   assert.match(t, /identificador/);
   assert.match(t, /número de voz "977"/);
   assert.match(t, /La web "pepitolava.es"/);
-  assert.match(t, /faltan nombre/);
   assert.equal(REGISTRO.datos.size, 0);
+});
+
+test("una ficha INCOMPLETA se guarda como borrador, dice qué falta con los nombres del formulario y no se puede activar", async () => {
+  const r = await panel("guardar", { ficha: { ...PEPITO_BD, id: "a-medias", nombre: "", conocimiento: { ...PEPITO_BD.conocimiento, precios: "" }, origenesPermitidos: ["https://amedias.es"], numerosVoz: [] }, nueva: true });
+  assert.equal(r.estado, 200, JSON.stringify(r));
+  assert.equal(r.incompleta.length, 1);
+  assert.match(r.incompleta[0], /^Falta rellenar: Nombre · Precios y máquinas\.$/);
+  assert.equal(REGISTRO.datos.get("ficha:a-medias").activa, false);
+  assert.ok(!idsDeClientes().includes("a-medias"), "a medias no entra en el registro: no atiende a nadie");
+  const l = await panel("listar");
+  assert.equal(l.lavanderias.find((x) => x.id === "a-medias").invalida, true);
+  const a = await panel("activar", { id: "a-medias", activa: true });
+  assert.equal(a.estado, 422);
+  assert.match(a.errores.join(" "), /incompleta.*Falta rellenar: Nombre/s);
+  assert.equal((await panel("borrar", { id: "a-medias" })).estado, 200);
 });
 
 test("el panel solo guarda campos conocidos (nada de secretos ni prefijos colados)", () => {
@@ -205,4 +219,82 @@ test("desactivar y borrar", async () => {
   assert.equal((await panel("borrar", { id: "pepito" })).estado, 200);
   assert.ok(!idsDeClientes().includes("pepito"));
   assert.throws(() => obtenerCliente(ENV, "pepito"));
+});
+
+// ---------------------------------------------------------------------
+//  Arreglos del 09/11: sesión compartida, ficha nueva vacía, avisos de copia
+// ---------------------------------------------------------------------
+async function peticionPanel(accion, { clave, cookie, env = ENV, ahora } = {}) {
+  const headers = { "Content-Type": "application/json", "CF-Connecting-IP": "7.7.7.7" };
+  if (clave) headers["X-Clave"] = clave;
+  if (cookie) headers.Cookie = cookie;
+  return atenderAdmin(new Request("https://x.dev/admin/api", { method: "POST", headers, body: JSON.stringify({ accion }) }), env, ahora);
+}
+
+test("SESIÓN: al entrar se da una cookie protegida que sirve en cualquier pestaña sin volver a dar la contraseña", async () => {
+  const r = await peticionPanel("listar", { clave: ENV.ADMIN_CLAVE });
+  assert.equal(r.status, 200);
+  const c = r.headers.get("Set-Cookie");
+  assert.match(c, /^lavanda_admin=v1\.\d+\.[0-9a-f]{32}; Path=\/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=43200$/);
+  const cookie = c.split(";")[0];
+  assert.equal((await peticionPanel("listar", { cookie })).status, 200, "otra pestaña, solo con la cookie");
+  assert.equal((await peticionPanel("listar", { cookie: "otra=1; " + cookie })).status, 200, "entre otras cookies");
+  const sin = await peticionPanel("listar", {});
+  assert.equal(sin.status, 401);
+  assert.equal((await sin.json()).sinSesion, true);
+});
+
+test("SESIÓN: no valen cookies manipuladas, caducadas ni de una contraseña anterior", async () => {
+  const cookie = (await peticionPanel("listar", { clave: ENV.ADMIN_CLAVE })).headers.get("Set-Cookie").split(";")[0];
+  const [, version, caduca, firma] = /^lavanda_admin=(v1)\.(\d+)\.([0-9a-f]+)$/.exec(cookie);
+  const otraCaducidad = `lavanda_admin=${version}.${Number(caduca) + 99999}.${firma}`;
+  assert.equal((await peticionPanel("listar", { cookie: otraCaducidad })).status, 401, "alargar la caducidad invalida la firma");
+  assert.equal((await peticionPanel("listar", { cookie, ahora: Date.now() + 13 * 3600_000 })).status, 401, "caduca a las 12 h");
+  assert.equal((await peticionPanel("listar", { cookie, env: { ...ENV, ADMIN_CLAVE: "otra-contraseña" } })).status, 401, "cambiar la contraseña cierra las sesiones");
+  // pedir sin sesión no cuenta como intento fallido (no bloquea a nadie)
+  for (let i = 0; i < 12; i++) await peticionPanel("listar", {});
+  assert.equal((await peticionPanel("listar", { clave: ENV.ADMIN_CLAVE })).status, 200);
+});
+
+test("SESIÓN: salir borra la cookie", async () => {
+  const r = await atenderAdmin(new Request("https://x.dev/admin/salir", { method: "POST" }), ENV);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get("Set-Cookie"), /^lavanda_admin=; .*Max-Age=0$/);
+});
+
+test("las páginas del panel no guardan la contraseña en el navegador, y la de conversaciones no tiene errores de JavaScript", async () => {
+  for (const ruta of ["/admin", "/admin/conversaciones"]) {
+    const html = await (await atenderAdmin(new Request("https://x.dev" + ruta), ENV)).text();
+    assert.doesNotMatch(html, /sessionStorage|localStorage/, ruta);
+    const js = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
+    assert.doesNotThrow(() => new Function(js), `error de sintaxis en ${ruta}`);
+  }
+});
+
+test("FICHA NUEVA: empieza vacía, y los ejemplos de Lavanda se piden aparte", async () => {
+  const p = await panel("plantilla");
+  assert.ok(Object.values(p.ficha.conocimiento).every((v) => v === null), "sin secciones copiadas");
+  assert.ok(["procedimientos", "web", "whatsapp", "avisos", "voz"].every((k) => p.ficha.normas[k] === ""), "sin normas copiadas");
+  assert.deepEqual(p.ficha.normas.motivosAviso, []);
+  assert.equal(p.ficha.equipoCobro, "");
+  const e = await panel("ejemplos");
+  assert.equal(e.de, "Lavanda");
+  assert.match(e.ejemplos["normas.procedimientos"], /Bizum/);
+  assert.match(e.ejemplos["normas.motivosAviso"], /^bizum \| Bizum \| /);
+  assert.equal(e.ejemplos.equipoCobro, "del cajero");
+});
+
+test("aviso si una sección es IGUAL que la de otra lavandería (ejemplo copiado sin cambiar)", async () => {
+  const { FICHA_LAVANDA } = await import("../src/clientes/lavanda.js");
+  const ficha = { ...PEPITO_BD, id: "copiona", origenesPermitidos: ["https://copiona.es"], numerosVoz: [], normas: { ...PEPITO_BD.normas, procedimientos: FICHA_LAVANDA.normas.procedimientos } };
+  const r = await panel("guardar", { ficha, nueva: true });
+  assert.equal(r.estado, 200);
+  assert.ok(r.avisos.some((a) => a === '"Problemas con máquinas, dinero y devoluciones" es igual que la de Lavanda: revisa que valga para esta lavandería.'), JSON.stringify(r.avisos));
+  assert.equal((await panel("borrar", { id: "copiona" })).estado, 200);
+});
+
+test("la vista previa explica lo que falta con los nombres del formulario", async () => {
+  const r = await panel("vista", { ficha: { ...PEPITO_BD, conocimiento: { ...PEPITO_BD.conocimiento, pago: "" } } });
+  assert.equal(r.estado, 422);
+  assert.deepEqual(r.errores, ["Falta rellenar: Forma de pago."]);
 });

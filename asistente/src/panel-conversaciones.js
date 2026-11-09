@@ -108,8 +108,7 @@ export const PAGINA_CONVERSACIONES = `<!doctype html>
 </div>
 <script>
 (function () {
-  var clave = "";
-  try { clave = sessionStorage.getItem("adminClave") || ""; } catch (e) {}
+  var clave = "";   // solo al entrar; después vale la sesión del panel (cookie), compartida con todas las pestañas
   var todas = [], lavanderias = [], abierta = null;
   function $(id) { return document.getElementById(id); }
   function el(etiqueta, clase, texto) {
@@ -137,12 +136,14 @@ export const PAGINA_CONVERSACIONES = `<!doctype html>
 
   function api(accion, datos) {
     var cuerpo = JSON.stringify(Object.assign({ accion: accion }, datos || {}));
-    return fetch("/admin/api", { method: "POST", headers: { "Content-Type": "application/json", "X-Clave": clave }, body: cuerpo })
+    var cab = { "Content-Type": "application/json" };
+    if (clave) cab["X-Clave"] = clave;
+    return fetch("/admin/api", { method: "POST", headers: cab, body: cuerpo, credentials: "same-origin" })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._estado = r.status; return j; }); })
-      .then(function (j) { if (j._estado === 401) { salir("Contraseña incorrecta."); } return j; });
+      .then(function (j) { if (j._estado === 401) { pedirClave(j.sinSesion ? "" : "Contraseña incorrecta."); } return j; });
   }
-  function salir(motivo) {
-    clave = ""; try { sessionStorage.removeItem("adminClave"); } catch (e) {}
+  function pedirClave(motivo) {
+    clave = "";
     $("login").hidden = false; $("loginError").textContent = motivo || "";
   }
 
@@ -152,7 +153,7 @@ export const PAGINA_CONVERSACIONES = `<!doctype html>
       if (j._estado === 401) return;
       if (j._estado !== 200) { $("listaError").textContent = j.error || "No se pudo cargar la lista."; return; }
       $("login").hidden = true;
-      try { sessionStorage.setItem("adminClave", clave); } catch (e) {}
+      clave = "";   // a partir de aquí, la sesión
       todas = j.conversaciones || [];
       lavanderias = j.lavanderias || [];
       var sel = $("lav"), antes = sel.value;
@@ -247,7 +248,9 @@ export const PAGINA_CONVERSACIONES = `<!doctype html>
     $("loginError").textContent = "";
     cargar();
   });
-  $("bSalir").addEventListener("click", function () { salir(""); });
+  $("bSalir").addEventListener("click", function () {
+    fetch("/admin/salir", { method: "POST", credentials: "same-origin" }).then(function () { pedirClave(""); }, function () { pedirClave(""); });
+  });
   $("bRecargar").addEventListener("click", cargar);
   $("buscar").addEventListener("input", pintarLista);
   $("lav").addEventListener("change", pintarLista);
@@ -259,7 +262,7 @@ export const PAGINA_CONVERSACIONES = `<!doctype html>
     var lav = $("lav").value || (lavanderias[0] && lavanderias[0].id) || "lavanda";
     abrir(lav, t);
   });
-  if (clave) cargar(); else $("login").hidden = false;
+  cargar();   // con una sesión abierta (en esta u otra pestaña) entra directamente; si no, pide la contraseña
 })();
 </script>
 </body>

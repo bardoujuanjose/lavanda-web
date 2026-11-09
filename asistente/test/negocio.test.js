@@ -73,3 +73,18 @@ test("un hueco con un dato que no existe da error", () => {
   assert.throws(() => rellenar("Hola {{inventado}}", FICHA_LAVANDA), /Falta el dato "inventado"/);
   assert.equal(rellenar("Llama al {{telefono}}", FICHA_LAVANDA), "Llama al 689 810 213");
 });
+
+test("las normas de voz solo son obligatorias si la lavandería tiene número de voz", () => {
+  const sinVoz = { ...PEPITO, numerosVoz: [], normas: { ...PEPITO.normas, voz: "" } };
+  assert.doesNotThrow(() => crearTextos(sinVoz));
+  assert.throws(() => crearTextos({ ...sinVoz, numerosVoz: ["+34977000111"] }), /normas\.voz/);
+});
+
+test("aparato de pago y ejemplo de lo que no debe inventar son opcionales, y sin ellos las frases quedan bien", () => {
+  const t = crearTextos({ ...PEPITO, equipoCobro: "", ejemploNoExiste: "" });
+  assert.match(t.INSTRUCCIONES_WHATSAPP, /\(pantalla de una máquina, etiqueta de ropa/);
+  assert.match(t.INSTRUCCIONES_WHATSAPP, /No inventes máquinas, servicios, soluciones ni datos\. /);
+  assert.doesNotMatch(t.INSTRUCCIONES_WHATSAPP + t.INSTRUCCIONES_VOZ + t.INSTRUCCIONES_WEB, /por ejemplo, \)|máquina o ,|\{\{/);
+  const con = crearTextos(PEPITO);
+  assert.match(con.INSTRUCCIONES_WHATSAPP, /pantalla de una máquina o del lector de tarjetas,/);
+});
