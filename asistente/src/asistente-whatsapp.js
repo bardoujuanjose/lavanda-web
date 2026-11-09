@@ -29,7 +29,7 @@ export function claveAviso(datos) {
 }
 
 // Los motivos de aviso (Bizum, devolución, justificante…) dependen de la lavandería: están en su ficha
-function describirAviso(a, motivos) {
+export function describirAviso(a, motivos) {
   const nombre = motivos.find((m) => m.clave === a.motivo)?.nombre;
   return [nombre || a.motivo, a.maquina && `máquina ${a.maquina}`, a.importe, a.telefono && `tel. ${a.telefono}`]
     .filter(Boolean).join(", ");

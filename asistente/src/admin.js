@@ -15,8 +15,9 @@ import { normalizarTelefono } from "./whatsapp.js";
 import { FICHA_LAVANDA } from "./clientes/lavanda.js";
 import {
   almacenRegistro, prepararRegistro, olvidarCache, idsDeClientes, obtenerCliente, esFija,
-  conexionDe, comprobarActivacion, restosDeOtras,
+  conexionDe, comprobarActivacion, restosDeOtras, nombreMemoria,
 } from "./clientes/index.js";
+import { PAGINA_CONVERSACIONES } from "./panel-conversaciones.js";
 
 const MAX_TEXTO = 30_000;
 const MAX_INTENTOS = 10;                  // contraseñas falladas por visitante…
@@ -265,6 +266,28 @@ async function accion(datos, env, origen) {
       return json({ ok: true });
     }
 
+    // Conversaciones de WhatsApp (solo lectura): la lista sale del índice; cada una, de la memoria del cliente
+    case "conversaciones": {
+      const lista = (await almacen.listarConversaciones()).sort((a, b) => (b.ultimo || 0) - (a.ultimo || 0)).slice(0, 1000);
+      const nombres = Object.fromEntries(idsDeClientes().map((id) => [id, obtenerCliente(env, id).ficha.nombre]));
+      return json({
+        conversaciones: lista.map((c) => ({ ...c, lavanderia: nombres[c.cliente] || c.cliente })),
+        lavanderias: Object.entries(nombres).map(([id, nombre]) => ({ id, nombre })),
+      });
+    }
+
+    case "conversacion": {
+      if (!env.CONVERSACIONES) return json({ error: "Falta la memoria de conversaciones (CONVERSACIONES) en el servidor." }, 503);
+      const id = String(datos.cliente || "");
+      if (!idsDeClientes().includes(id)) return json({ error: "No existe esa lavandería." }, 404);
+      const telefono = normalizarTelefono(datos.telefono);
+      if (!/^\d{9,15}$/.test(telefono)) return json({ error: "El teléfono no es válido." }, 422);
+      const memoria = nombreMemoria(obtenerCliente(env, id), telefono);
+      const c = await env.CONVERSACIONES.get(env.CONVERSACIONES.idFromName(memoria)).leerConversacion();
+      if (!c.transcripcion.length) return json({ error: "No hay ninguna conversación con ese número." }, 404);
+      return json({ conversacion: { ...c, telefono: c.telefono || telefono, cliente: id } });
+    }
+
     default:
       return json({ error: "Acción desconocida." }, 400);
   }
@@ -275,8 +298,8 @@ async function accion(datos, env, origen) {
 // ---------------------------------------------------------------------
 export async function atenderAdmin(request, env, ahora = Date.now()) {
   const { pathname } = new URL(request.url);
-  if (pathname === "/admin" && request.method === "GET") {
-    return new Response(PAGINA, {
+  if ((pathname === "/admin" || pathname === "/admin/conversaciones") && request.method === "GET") {
+    return new Response(pathname === "/admin" ? PAGINA : PAGINA_CONVERSACIONES, {
       headers: {
         "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
         "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer",
@@ -361,7 +384,7 @@ const PAGINA = `<!doctype html>
   <span id="loginError" style="color:#b3261e;font-size:.9rem"></span>
 </form></div>
 
-<header><b>Panel de lavanderías</b><button id="bSalir" type="button">Salir</button></header>
+<header><b>Panel de lavanderías</b><button type="button" onclick="location.href='/admin/conversaciones'">Conversaciones</button><button id="bSalir" type="button">Salir</button></header>
 <main>
   <section id="vLista">
     <div class="fila" style="margin-bottom:12px"><div class="t"><small>Lavanda es fija (se edita en el código). Las demás se gestionan aquí.</small></div>
