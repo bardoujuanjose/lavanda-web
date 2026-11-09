@@ -43,11 +43,11 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
      (una sola fuente: `negocio.js` / ficha), voz de Sofía (ElevenLabs), pasa la llamada al móvil del dueño en los casos
      difíciles y avisa por WhatsApp. Retell queda fuera de Lavanda (no tener dos asistentes de voz ni normas duplicadas).
    - **Comprobado por Juanjo (09/11/2026)**: el paquete regulatorio de Twilio ("Lavanda", España, Individual, Local) está **aprobado**.
-     **Todavía no hay número comprado** en Active numbers (un resumen de otro chat hablaba de un 977 pedido; si hubo un pedido en curso,
-     comprobar el email de Twilio antes de comprar otro, para no duplicarlo). El trunk SIP `retell-limpoi` (creado para Retell) parece
-     de Lavanda, pero por el nombre podría ser de Limpoi; **no se usa**, porque Lavanda no usa Retell. Dejarlo sin tocar.
-   - **Siguiente paso**: comprar el número (España, Voice, Local, prefijo 977, 5,50 $/mes aprox.) con el paquete aprobado, ponerlo en
-     Voice → A call comes in → Webhook `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST) y probar llamando desde un móvil.
+     **El número 977 ya está pedido** (hecho en otro chat; 5,50 $/mes, entrega estimada de 1 a 24 horas), pero a 09/11/2026 todavía no
+     aparece en Active numbers. **No comprar otro.** El trunk SIP `retell-limpoi` (creado para Retell) parece de Lavanda, pero por el
+     nombre podría ser de Limpoi; **no se usa**, porque Lavanda no usa Retell. Dejarlo sin tocar.
+   - **Siguiente paso**: cuando el número aparezca en Active numbers, ponerlo en Voice → A call comes in → Webhook
+     `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST) y probar llamando desde un móvil.
    - **Desvío en Movistar, por decidir**: `**61*NUMERO**20#` (solo si no contestas en 20 s) o `**21*NUMERO#` (todas las
      llamadas al asistente; el dueño ya no recibe ninguna directamente). Se cancela con `##002#` / `##61#`. El 689 810 213 no se porta.
    - Ideas acordadas, por orden: (1) normas en un archivo de texto sin código, (2) página privada con las transcripciones de
