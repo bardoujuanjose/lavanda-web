@@ -39,6 +39,16 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
    Castejón, con su DNI (dos caras en un PDF) y la dirección de su DNI. Pendiente de nueva revisión. Cuando se apruebe:
    Voice → A call comes in → Webhook `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST),
    probar llamando desde un móvil y activar desvío en Movistar (`**61*NUMERO**20#`).
+   - **Decisión (09/11/2026): Lavanda usa el asistente de voz propio (`/voz`), no Retell.** Mismas normas que WhatsApp
+     (una sola fuente: `negocio.js` / ficha), voz de Sofía (ElevenLabs), pasa la llamada al móvil del dueño en los casos
+     difíciles y avisa por WhatsApp. Retell queda fuera de Lavanda (no tener dos asistentes de voz ni normas duplicadas).
+   - **Sin verificar**: un resumen de otro chat (Claude normal, 09/11/2026) dice que el paquete regulatorio de Twilio ya está
+     aprobado y que se pidió un número +34 977 de voz (5,50 $/mes), con un trunk SIP `retell-limpoi` creado para Retell.
+     Comprobar en Twilio el estado del paquete y si hay un número comprado; si el trunk es de Limpoi, no mezclarlo con Lavanda.
+   - **Desvío en Movistar, por decidir**: `**61*NUMERO**20#` (solo si no contestas en 20 s) o `**21*NUMERO#` (todas las
+     llamadas al asistente; el dueño ya no recibe ninguna directamente). Se cancela con `##002#` / `##61#`. El 689 810 213 no se porta.
+   - Ideas acordadas, por orden: (1) normas en un archivo de texto sin código, (2) página privada con las transcripciones de
+     llamadas y WhatsApp, (3) grabación de audio solo si se quiere (requiere avisar al cliente y actualizar la política de privacidad).
 3. **Google Maps**: corregir horario (pone cierre 22:00; es 8:00–21:00), añadir descripción y redes.
 4. **DonDominio**: poner la renovación del dominio en automática (caduca el 04/11/2027).
 5. **Meta**: plantilla `aviso_lavanda` (Utilidad, español, cuerpo `Nuevo aviso de Lavanda: {{1}}`) y método de pago.
