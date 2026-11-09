@@ -14,6 +14,7 @@ Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou
 | Chat de la web | `chat.js` + servidor `/chat` | Solo informa; los problemas los manda a WhatsApp. |
 | Asistente de WhatsApp | Cloudflare Worker `lavanda-asistente`, ruta `/whatsapp` | Sustituye a Botpress (apagado). App de Meta "Lavanda Asistente" publicada. Claude Opus 5.5. |
 | Asistente de voz | Ruta `/voz` (Twilio ConversationRelay) | Claude Sonnet 5.5 sin razonamiento previo, voz ElevenLabs `2BJPFS2QZRUEpfkbclGy` a 0.9. Probado desde el navegador. |
+| Conversaciones de WhatsApp | https://lavanda-asistente.bardoujuanjose.workers.dev/admin/conversaciones | Solo lectura, contraseña `ADMIN_CLAVE`. Se guardan con fecha y hora desde que se publicó (las anteriores, solo los últimos 30 mensajes sin fecha, abriéndolas por teléfono). Máximo 400 mensajes y 1 año por cliente. Las llamadas aún no salen. |
 | Chat de pruebas | https://lavanda-asistente.bardoujuanjose.workers.dev/prueba | Con contraseña (`PRUEBA_CLAVE`). Botones Llamar, Twilio y WhatsApp. |
 | Normas de los asistentes | `asistente/src/negocio.js` (plantilla) | Basadas en las de Botpress. Casos A, B, C y D de dinero/cambio, Bizum en 48 h previa verificación. Los datos de Lavanda están en su ficha: `asistente/src/clientes/lavanda.js`. |
 | Correo | info@lavandavendrell.es | Reenvío gratuito con ImprovMX a juanjobardou@hotmail.com. |
@@ -46,7 +47,7 @@ detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene
      asistente; el dueño ya no recibe ninguna directamente). Se cancela con `##002#` / `##61#`. El 689 810 213 no se porta.
    - **Decidir:** portar el 977 de la tienda que no se usa o quedarse con el nuevo de Twilio.
    - Mejoras acordadas, por orden: (1) normas en un archivo de texto sin código, (2) página privada con las transcripciones de llamadas
-     y WhatsApp, (3) grabación de audio solo si se quiere (requiere avisar al cliente y actualizar la política de privacidad).
+     y WhatsApp (WhatsApp hecho en `/admin/conversaciones`; faltan las llamadas), (3) grabación de audio solo si se quiere (requiere avisar al cliente y actualizar la política de privacidad).
 2. **Los dos arreglos del asistente de WhatsApp** que Juanjo quería enseñar: **por contar** (aún no los ha dicho).
 3. **Datos que faltan para los asistentes:** pasos del programa 100 (centrifugado extra), protocolo del corte de luz y si el
    aparcamiento es zona azul (hoy el asistente no dice nada de esto).

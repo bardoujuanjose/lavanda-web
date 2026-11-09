@@ -25,6 +25,16 @@ export class Registro extends DurableObject {
   async borrar(id) {
     return this.ctx.storage.delete("ficha:" + id);
   }
+
+  // Índice de conversaciones de WhatsApp (una línea por cliente; la conversación entera está en su memoria)
+  async apuntarConversacion(linea) {
+    await this.ctx.storage.put("conv:" + linea.memoria, linea);
+    return true;
+  }
+  async listarConversaciones() {
+    const todo = await this.ctx.storage.list({ prefix: "conv:" });
+    return [...todo.values()];
+  }
 }
 
 // El acceso a la instancia única está en clientes/index.js (almacenRegistro).

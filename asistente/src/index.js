@@ -5,6 +5,7 @@
 //   /voz       -> llamadas de teléfono (Twilio)
 //   /prueba    -> chat de pruebas del asistente de WhatsApp (con contraseña)
 //   /admin     -> panel para dar de alta y editar lavanderías (con contraseña)
+//   /admin/conversaciones -> conversaciones de WhatsApp, solo lectura (misma contraseña)
 //   /alta/…    -> página para que el dueño conecte su WhatsApp (enlace firmado que genera el panel)
 // =====================================================================
 import { atenderChatWeb } from "./web.js";

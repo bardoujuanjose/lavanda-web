@@ -64,7 +64,7 @@ export async function atenderWhatsApp(request, env) {
     try {
       const cliente = buscarClientePorWhatsApp(env, e.numeroId);
       if (!cliente || !e.para) continue;
-      await conversacion(env, cliente, e.para).eco(e.texto, cliente.ficha.id);
+      await conversacion(env, cliente, e.para).eco(e.texto, cliente.ficha.id, e.para);
     } catch (err) {
       console.error("WhatsApp: no se pudo procesar un mensaje del dueño desde la app:", err?.message || err);
     }
