@@ -5,6 +5,8 @@ Lavanda: lavandería autoservicio, Avda. Baix Penedès 33, 43700 El Vendrell.
 Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou (Juanjo).
 
 **Cómo se publica el Worker:** Cloudflare Workers Builds conectado a GitHub (bardoujuanjose/lavanda-web), rama de producción main, directorio raíz asistente, comando npx wrangler deploy. Fusionar en main publica. Las compilaciones de ramas de vista previa están desactivadas en Cloudflare (Ajustes → Construcciones → Vistas previas, 06/11/2026), porque fallaban al faltar el bloque [previews] en wrangler.toml; no afecta a producción.
+**Comprobar cada publicación:** en GitHub, el commit de main tiene que tener el check "Workers Builds: lavanda-asistente" en verde (los checks "build/deploy" sin ese nombre son de la web, GitHub Pages). El 09/11/2026 un commit no se compiló y hubo que relanzarlo con un commit vacío. Arriba en `/prueba` sale "Versión publicada: hoy HH:MM" para comprobarlo antes de probar.
+**En el PC de Juanjo:** repo en Documentos\lavanda-web, con Git y Node.js instalados (09/11/2026). Pruebas: `npm test` en `asistente/`.
 
 ## Qué hay funcionando
 
@@ -15,8 +17,8 @@ Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou
 | Asistente de WhatsApp | Cloudflare Worker `lavanda-asistente`, ruta `/whatsapp` | Sustituye a Botpress (apagado). App de Meta "Lavanda Asistente" publicada. Claude Opus 5.5. |
 | Asistente de voz | Ruta `/voz` (Twilio ConversationRelay) | Claude Sonnet 5.5 sin razonamiento previo, voz ElevenLabs `2BJPFS2QZRUEpfkbclGy` a 0.9. Probado desde el navegador. |
 | Conversaciones de WhatsApp | https://lavanda-asistente.bardoujuanjose.workers.dev/admin/conversaciones | Solo lectura, contraseña `ADMIN_CLAVE`. Se guardan con fecha y hora desde que se publicó (las anteriores, solo los últimos 30 mensajes sin fecha, abriéndolas por teléfono). Máximo 400 mensajes y 1 año por cliente. Las llamadas aún no salen. |
-| Chat de pruebas | https://lavanda-asistente.bardoujuanjose.workers.dev/prueba | Con contraseña (`PRUEBA_CLAVE`). Botones Llamar, Twilio y WhatsApp. |
-| Normas de los asistentes | `asistente/src/negocio.js` (plantilla) | Basadas en las de Botpress. Casos A, B, C y D de dinero/cambio, Bizum en 48 h previa verificación. Los datos de Lavanda están en su ficha: `asistente/src/clientes/lavanda.js`. |
+| Chat de pruebas | https://lavanda-asistente.bardoujuanjose.workers.dev/prueba | Con contraseña (`PRUEBA_CLAVE`). Botones Llamar, Twilio y WhatsApp. Arriba, la hora de la versión publicada. |
+| Normas de los asistentes | `asistente/src/negocio.js` (plantilla) | Basadas en las de Botpress. Casos A, B, C y D de dinero/cambio, y F (se equivocó de máquina al pagar), Bizum en 48 h previa verificación. Tono amable y profesional (09/11/2026). Los datos de Lavanda están en su ficha: `asistente/src/clientes/lavanda.js`. |
 | Correo | info@lavandavendrell.es | Reenvío gratuito con ImprovMX a juanjobardou@hotmail.com. |
 | Facebook | facebook.com/lavandalaundryelvendrell | Web, correo, teléfono y dirección actualizados. |
 | Instagram | @lavandavendrell | Cuenta profesional, en la cuenta de Meta de Juanjo. |
@@ -29,7 +31,7 @@ WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, OWNER_PHONE, PRUEBA_CLAVE, TWILIO_AC
 ## Esta semana (9–15/11/2026)
 
 1. Twilio: cuando el número 977 aparezca en Active numbers, poner el webhook `/voz` y probar con una llamada (pendiente A1).
-2. Los dos arreglos del asistente de WhatsApp (pendiente A2).
+2. ~~Arreglos del asistente de WhatsApp~~ (tono, "¿Ya arranca?" y caso F publicados el 09/11/2026). Vigilar las conversaciones estos días.
 3. Claude Console: límite de gasto mensual (pendiente A11, 5 min).
 4. Google Maps: horario 8:00–21:00 (pendiente A8, 5 min).
 5. DonDominio: renovación automática (pendiente A9).
@@ -100,7 +102,11 @@ detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene
    - **Decidir:** portar el 977 de la tienda que no se usa o quedarse con el nuevo de Twilio.
    - Mejoras acordadas, por orden: (1) normas en un archivo de texto sin código, (2) página privada con las transcripciones de llamadas
      y WhatsApp (WhatsApp hecho en `/admin/conversaciones`; faltan las llamadas), (3) grabación de audio solo si se quiere (requiere avisar al cliente y actualizar la política de privacidad).
-2. **Los dos arreglos del asistente de WhatsApp** que Juanjo quería enseñar: **por contar** (aún no los ha dicho).
+2. **Arreglos del asistente de WhatsApp** (publicados el 09/11/2026; Juanjo los vigila en `/admin/conversaciones` los próximos días):
+   - Tono más profesional: sin "cuídate", "¡a ti!" ni corazones; emojis solo al saludar o despedirse; despedida en una frase y, si vuelve a dar las gracias, solo "Un saludo 👋".
+   - "¿Ya arranca?" en vez de "¿Sigue sin arrancar?" (un "no" se entendía como "ya funciona" y se cerraba el caso sin Bizum).
+   - Caso F, se equivocó de máquina al pagar: si la que pagó funciona, que pase la ropa a esa; si está averiada, Bizum por su precio. Lavadora/secadora cruzadas o ropa que no cabe: al teléfono.
+   - Si Juanjo tenía otro arreglo en mente, está por contar.
 3. **Datos que faltan para los asistentes:** pasos del programa 100 (centrifugado extra), protocolo del corte de luz y si el
    aparcamiento es zona azul (hoy el asistente no dice nada de esto).
 4. **Aviso de protección de datos** cuando el asistente pide nombre o teléfono (y en la política de privacidad si se graban llamadas).
@@ -134,6 +140,8 @@ Limpoi es el nombre del producto. Detalles en la sección siguiente.
 - ✅ Probar la voz con una llamada desde el navegador.
 - ✅ Enforce HTTPS en GitHub Pages.
 - ❌ Retell para Lavanda (descartado el 09/11/2026).
+- ✅ Página de conversaciones de WhatsApp (`/admin/conversaciones`), probada con un mensaje real (09/11/2026).
+- ✅ Tono profesional, "¿Ya arranca?", caso F y hora de la versión en `/prueba` (09/11/2026).
 
 ## Producto para otras lavanderías (en marcha)
 
