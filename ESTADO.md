@@ -145,6 +145,11 @@ Limpoi es el nombre del producto. Detalles en la sección siguiente.
 
 ## Producto para otras lavanderías (en marcha)
 
+**09/11/2026, 20:40: el WhatsApp de Lavanda ya lo atiende la plataforma** (servidor `limpoi`, repositorio `limpoi`;
+conversaciones nuevas en https://limpoi.bardoujuanjose.workers.dev/admin/conversaciones). Este servidor
+(`lavanda-asistente`) sigue encendido de reserva y atiende todavía el **chat de la web** y la **voz**. Cómo volver
+atrás y lo pendiente: `ESTADO.md` de `limpoi`. **No hacer cambios del asistente aquí: se hacen en `limpoi`.**
+
 **09/11/2026: la plataforma se separa de Lavanda.** Repositorio nuevo **`bardoujuanjose/limpoi`** (privado): la
 plataforma ("Limpoi", nombre provisional) en la que cada lavandería es un cliente; **Lavanda será su cliente nº 1**
 y se importa desde el panel como cualquier otra (sus instrucciones salen idénticas). Dos servidores: `limpoi`
