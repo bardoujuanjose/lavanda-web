@@ -15,7 +15,7 @@ import { normalizarTelefono } from "./whatsapp.js";
 import { FICHA_LAVANDA } from "./clientes/lavanda.js";
 import {
   almacenRegistro, prepararRegistro, olvidarCache, idsDeClientes, obtenerCliente, esFija,
-  conexionDe, comprobarActivacion, restosDeOtras, nombreMemoria,
+  conexionDe, comprobarActivacion, restosDeOtras, nombreMemoria, seccionesCopiadas, textoCopiada,
 } from "./clientes/index.js";
 import { PAGINA_CONVERSACIONES } from "./panel-conversaciones.js";
 
@@ -47,6 +47,31 @@ function claveCorrecta(buena, recibida) {
   for (let i = 0; i < buena.length; i++) d |= buena.charCodeAt(i) ^ r.charCodeAt(i);
   return d === 0;
 }
+
+// ---------------------------------------------------------------------
+//  Sesión: al entrar con la contraseña, el servidor da una cookie firmada (12 h) que comparten todas las
+//  pestañas y la página de conversaciones. La contraseña no se guarda en el navegador. La firma depende de
+//  ADMIN_CLAVE: si se cambia la contraseña, todas las sesiones abiertas dejan de valer.
+// ---------------------------------------------------------------------
+const COOKIE = "lavanda_admin";
+const SESION_SEGUNDOS = 12 * 3600;
+const codificar = new TextEncoder();
+async function firmaSesion(env, caduca) {
+  const k = await crypto.subtle.importKey("raw", codificar.encode("sesion:" + env.ADMIN_CLAVE), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const f = new Uint8Array(await crypto.subtle.sign("HMAC", k, codificar.encode("v1." + caduca)));
+  return Array.from(f.slice(0, 16), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+export async function crearSesion(env, ahora = Date.now()) {
+  const caduca = Math.floor(ahora / 1000) + SESION_SEGUNDOS;
+  return `v1.${caduca}.${await firmaSesion(env, caduca)}`;
+}
+export async function sesionValida(env, request, ahora = Date.now()) {
+  const valor = (request.headers.get("Cookie") || "").split(/;\s*/).find((c) => c.startsWith(COOKIE + "="))?.slice(COOKIE.length + 1);
+  const m = /^v1\.(\d{9,11})\.([0-9a-f]{32})$/.exec(valor || "");
+  if (!m || Number(m[1]) * 1000 < ahora) return false;
+  return claveCorrecta(await firmaSesion(env, m[1]), m[2]);
+}
+const cabeceraCookie = (valor, segundos) => `${COOKIE}=${valor}; Path=/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=${segundos}`;
 
 const fallos = new Map();
 function bloqueado(ip, ahora) {
@@ -96,12 +121,39 @@ function erroresDeFormato(ficha) {
   return errores;
 }
 
-// ¿Se pueden montar los asistentes con esta ficha?
-function validar(ficha) {
-  const errores = erroresDeFormato(ficha);
-  try { crearTextos(ficha); } catch (e) { errores.push(e.message); }
-  return errores;
+// Nombres de los campos tal como salen en el formulario (para que los errores se entiendan)
+const ETIQUETAS = {
+  id: "Identificador", nombre: "Nombre", ciudad: "Ciudad", direccionCompleta: "Dirección completa", direccionCorta: "Dirección corta",
+  web: "Web", telefono: "Teléfono de atención", telefonoWhatsapp: "Teléfono para enlaces", horario: "Horario", zonaHoraria: "Zona horaria",
+  resenaUrl: "Enlace de reseñas de Google", origenesPermitidos: "Webs donde va el chat", numerosVoz: "Números de voz",
+  "conocimiento.general": "Información general", "conocimiento.precios": "Precios y máquinas", "conocimiento.pago": "Forma de pago",
+  "normas.procedimientos": "Problemas con máquinas, dinero y devoluciones", "normas.web": "Chat de la web: qué hace ante un problema",
+  "normas.whatsapp": "WhatsApp: cuándo sugerir llamar y qué no prometer", "normas.avisos": "WhatsApp: cuándo avisar al equipo",
+  "normas.voz": "Voz: adaptaciones al teléfono (obligatoria porque tiene número de voz)",
+  "normas.motivosAviso": "Motivos de aviso al dueño", "normas.herramientaAviso": "Cuándo se avisa (para la herramienta)",
+};
+function traducir(mensaje) {
+  const m = /^Ficha incompleta \([^)]*\): faltan (.+)$/.exec(mensaje);
+  if (!m) return mensaje;
+  return "Falta rellenar: " + m[1].split(", ").map((k) => ETIQUETAS[k] || k).join(" · ") + ".";
 }
+
+// ¿Se pueden montar los asistentes con esta ficha?
+// formato: errores que impiden guardar · incompleta: lo que falta para poder activarla
+function revisar(ficha) {
+  const formato = erroresDeFormato(ficha);
+  const incompleta = [];
+  try { crearTextos(ficha); } catch (e) { incompleta.push(traducir(e.message)); }
+  return { formato, incompleta };
+}
+function validar(ficha) {
+  const { formato, incompleta } = revisar(ficha);
+  return [...formato, ...incompleta];
+}
+const avisosDeCopia = (ficha) => [
+  ...restosDeOtras(ficha).map((r) => `Parece que quedan datos de ${r.de}: "${r.texto}".`),
+  ...seccionesCopiadas(ficha).map(textoCopiada),
+];
 
 // Lo que el panel puede ver de una ficha guardada: nunca el token
 function paraElPanel(guardada) {
@@ -115,16 +167,30 @@ function paraElPanel(guardada) {
   };
 }
 
-// Ficha nueva: datos vacíos y, como punto de partida, las secciones y normas de Lavanda
-// (con sus huecos {{telefono}}, {{horario}}… que se rellenarán con los datos de la nueva)
+// Ficha nueva: VACÍA. Antes venía copiada de Lavanda y era fácil dejar sus datos o sus normas sin querer;
+// ahora cada campo tiene un botón "Ver ejemplo de Lavanda" (acción "ejemplos").
 function plantillaNueva() {
   return {
     id: "", nombre: "", ciudad: "", direccionCompleta: "", direccionCorta: "", web: "", telefono: "", telefonoWhatsapp: "",
-    horario: "", zonaHoraria: "Europe/Madrid", resenaUrl: "", equipoCobro: FICHA_LAVANDA.equipoCobro, ejemploNoExiste: FICHA_LAVANDA.ejemploNoExiste,
+    horario: "", zonaHoraria: "Europe/Madrid", resenaUrl: "", equipoCobro: "", ejemploNoExiste: "",
     origenesPermitidos: [], numerosVoz: [],
-    conocimiento: structuredClone(FICHA_LAVANDA.conocimiento),
-    normas: structuredClone(FICHA_LAVANDA.normas),
+    conocimiento: Object.fromEntries(SECCIONES.map((k) => [k, null])),
+    normas: { ...Object.fromEntries(NORMAS_TEXTO.map((k) => [k, ""])), motivosAviso: [], herramientaAviso: { cuando: "", importe: "", telefono: "" } },
     activa: false, conexion: null,
+  };
+}
+
+// Ejemplos para cada campo: lo que tiene Lavanda (cajero de efectivo y Bizum)
+function ejemplos() {
+  const L = FICHA_LAVANDA;
+  return {
+    equipoCobro: L.equipoCobro, ejemploNoExiste: L.ejemploNoExiste,
+    ...Object.fromEntries(SECCIONES.map((k) => ["conocimiento." + k, L.conocimiento[k] || ""])),
+    ...Object.fromEntries(NORMAS_TEXTO.map((k) => ["normas." + k, L.normas[k] || ""])),
+    "normas.motivosAviso": L.normas.motivosAviso.map((m) => [m.clave, m.nombre, m.titulo].join(" | ")).join("\n"),
+    "normas.herramientaAviso.cuando": L.normas.herramientaAviso.cuando,
+    "normas.herramientaAviso.importe": L.normas.herramientaAviso.importe,
+    "normas.herramientaAviso.telefono": L.normas.herramientaAviso.telefono,
   };
 }
 
@@ -162,6 +228,9 @@ async function accion(datos, env, origen) {
     case "plantilla":
       return json({ ficha: plantillaNueva() });
 
+    case "ejemplos":
+      return json({ de: FICHA_LAVANDA.nombre, ejemplos: ejemplos() });
+
     case "leer": {
       if (esFija(datos.id)) {
         const { secretos, prefijoMemoria, ...ficha } = obtenerCliente(env, datos.id).ficha;
@@ -184,10 +253,12 @@ async function accion(datos, env, origen) {
     case "guardar": {
       const ficha = limpiarFicha(datos.ficha);
       if (esFija(ficha.id)) return json({ errores: [`"${ficha.id}" es una lavandería fija: se edita en el código.`] }, 409);
-      const errores = validar(ficha);
-      if (errores.length) return json({ errores }, 422);
+      const { formato, incompleta } = revisar(ficha);
+      if (formato.length) return json({ errores: formato }, 422);
       const anterior = await leerGuardada(ficha.id);
       if (datos.nueva && anterior) return json({ errores: [`Ya existe una lavandería con el identificador "${ficha.id}".`] }, 409);
+      // Una lavandería activa tiene que seguir completa: un cambio que la deje a medias no se guarda
+      if (incompleta.length && anterior?.activa === true) return json({ errores: ["Está activa: no se puede dejar incompleta.", ...incompleta] }, 422);
       // La conexión y el estado no se cambian al guardar los datos: tienen sus propias acciones
       const guardar = { ...ficha, activa: anterior?.activa === true, conexion: anterior?.conexion || null, actualizada: new Date().toISOString() };
       // Si ya está activa, el cambio se aplica al momento: no puede dejarla en conflicto con otra lavandería
@@ -198,7 +269,7 @@ async function accion(datos, env, origen) {
       }
       await almacen.guardar(guardar);
       await recargar();
-      return json({ ok: true, avisos: restosDeOtras(ficha).map((r) => `Parece que quedan datos de ${r.de}: "${r.texto}".`) });
+      return json({ ok: true, incompleta, avisos: avisosDeCopia(ficha) });
     }
 
     case "conexion": {
@@ -233,7 +304,10 @@ async function accion(datos, env, origen) {
         await recargar();
         return json({ ok: true });
       }
-      if (!idsDeClientes().includes(g.id)) return json({ errores: ["La ficha tiene errores: ábrela y guárdala de nuevo."] }, 422);
+      if (!idsDeClientes().includes(g.id)) {
+        const faltan = validar(limpiarFicha(g));
+        return json({ errores: ["Todavía no se puede activar: la ficha está incompleta.", ...(faltan.length ? faltan : ["Ábrela y guárdala de nuevo."])] }, 422);
+      }
       const { errores, avisos } = comprobarActivacion(env, obtenerCliente(env, g.id));
       if (errores.length) return json({ errores, avisos }, 409);
       await almacen.guardar({ ...g, activa: true });
@@ -306,19 +380,33 @@ export async function atenderAdmin(request, env, ahora = Date.now()) {
       },
     });
   }
+  // Salir: borra la sesión (en todas las pestañas)
+  if (pathname === "/admin/salir" && request.method === "POST") {
+    const r = json({ ok: true });
+    r.headers.append("Set-Cookie", cabeceraCookie("", 0));
+    return r;
+  }
   if (pathname !== "/admin/api" || request.method !== "POST") return json({ error: "No encontrado" }, 404);
   if (!env.ADMIN_CLAVE) return json({ error: "Falta configurar el secreto ADMIN_CLAVE en Cloudflare." }, 503);
 
+  // Se entra con la contraseña (cabecera X-Clave) o con la sesión abierta (cookie)
   const ip = request.headers.get("CF-Connecting-IP") || "desconocida";
-  if (bloqueado(ip, ahora)) return json({ error: "Demasiados intentos. Espera unos minutos." }, 429);
-  if (!claveCorrecta(env.ADMIN_CLAVE, request.headers.get("X-Clave"))) {
-    anotarFallo(ip, ahora);
-    return json({ error: "Contraseña incorrecta." }, 401);
+  const clave = request.headers.get("X-Clave");
+  if (clave) {
+    if (bloqueado(ip, ahora)) return json({ error: "Demasiados intentos. Espera unos minutos." }, 429);
+    if (!claveCorrecta(env.ADMIN_CLAVE, clave)) {
+      anotarFallo(ip, ahora);
+      return json({ error: "Contraseña incorrecta." }, 401);
+    }
+  } else if (!(await sesionValida(env, request, ahora))) {
+    return json({ error: "Inicia sesión.", sinSesion: true }, 401);
   }
   let datos;
   try { datos = await request.json(); } catch { return json({ error: "Petición no válida." }, 400); }
   try {
-    return await accion(datos || {}, env, new URL(request.url).origin);
+    const r = await accion(datos || {}, env, new URL(request.url).origin);
+    if (clave) r.headers.append("Set-Cookie", cabeceraCookie(await crearSesion(env, ahora), SESION_SEGUNDOS));
+    return r;
   } catch (e) {
     console.error("Panel: error:", e?.message || e);
     return json({ error: "Error del servidor: " + (e?.message || e) }, 500);
@@ -368,11 +456,27 @@ const PAGINA = `<!doctype html>
   .barra { position: sticky; bottom: 0; background: var(--fondo); padding: 10px 0; display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--borde); }
   #login { position: fixed; inset: 0; background: var(--verde); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 9; }
   #login form { background: #fff; border-radius: 14px; padding: 20px; width: min(360px, 100%); display: flex; flex-direction: column; gap: 10px; }
-  #vista { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 8; }
-  #vista[hidden], #login[hidden], [hidden] { display: none !important; }
-  #vista .caja { background: #fff; border-radius: 12px; width: min(900px, 100%); max-height: 90vh; display: flex; flex-direction: column; }
-  #vista pre { margin: 0; padding: 14px; overflow: auto; white-space: pre-wrap; font-size: .82rem; flex: 1; }
-  #vista .fila { padding: 10px 14px; border-bottom: 1px solid var(--borde); }
+  /* Vista previa: panel lateral que NO tapa el formulario y se actualiza solo al escribir */
+  #vista { position: fixed; top: 0; right: 0; bottom: 0; width: 520px; background: #fff; border-left: 1px solid var(--borde); box-shadow: -6px 0 24px rgba(0,0,0,.08); display: flex; flex-direction: column; z-index: 8; }
+  #vista .vcab { padding: 10px 14px; border-bottom: 1px solid var(--borde); display: grid; gap: 8px; }
+  #vista .vcab .fila button[aria-pressed="true"] { background: var(--verde); color: #fff; border-color: var(--verde); }
+  #vista .mensajes { margin: 8px 14px 0; }
+  #vista pre { margin: 0; padding: 14px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .82rem; flex: 1; }
+  #vista.viejo pre { opacity: .45; }
+  body.con-vista main { max-width: none; margin-right: 540px; }
+  body.con-vista header { padding-right: 536px; }   /* que el panel no tape «Conversaciones» y «Salir» */
+  @media (max-width: 1099px) {
+    #vista { width: 100%; top: auto; height: 55vh; border-left: 0; border-top: 1px solid var(--borde); box-shadow: 0 -6px 24px rgba(0,0,0,.1); }
+    body.con-vista main { margin-right: auto; padding-bottom: 57vh; }
+    body.con-vista header { padding-right: 16px; }
+  }
+  /* Ejemplo de Lavanda para un campo */
+  #ejemplo { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 9; }
+  #ejemplo .caja { background: #fff; border-radius: 12px; width: min(760px, 100%); max-height: 88vh; display: flex; flex-direction: column; }
+  #ejemplo .fila { padding: 10px 14px; border-bottom: 1px solid var(--borde); }
+  #ejemplo pre { margin: 0; padding: 14px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .82rem; flex: 1; }
+  button.ej { font-size: .78rem; padding: 2px 8px; margin-left: 6px; color: var(--verde2); border-color: var(--borde); }
+  #vista[hidden], #ejemplo[hidden], #login[hidden], [hidden] { display: none !important; }
   .ayuda { color: var(--gris); font-size: .88rem; margin: 4px 0 10px; }
 </style>
 </head>
@@ -424,17 +528,25 @@ const PAGINA = `<!doctype html>
   </section>
 </main>
 
-<div id="vista" hidden><div class="caja">
-  <div class="fila"><div class="t"><b>Vista previa</b></div>
-    <button type="button" data-v="whatsapp">WhatsApp</button><button type="button" data-v="voz">Voz</button><button type="button" data-v="web">Web</button>
-    <button type="button" id="bCerrarVista">Cerrar</button></div>
+<aside id="vista" hidden aria-label="Vista previa">
+  <div class="vcab">
+    <div class="fila"><div class="t"><b>Vista previa</b> <small id="vistaEstado"></small></div><button type="button" id="bCerrarVista">Cerrar</button></div>
+    <div class="fila"><button type="button" data-v="whatsapp" aria-pressed="true">WhatsApp</button><button type="button" data-v="voz" aria-pressed="false">Voz</button><button type="button" data-v="web" aria-pressed="false">Web</button></div>
+  </div>
+  <div id="vistaErrores" class="mensajes"></div>
   <pre id="vistaTexto"></pre>
+</aside>
+
+<div id="ejemplo" hidden><div class="caja">
+  <div class="fila"><div class="t"><b id="ejTitulo"></b><small id="ejDe"></small></div>
+    <button type="button" id="bEjUsar">Copiar en el campo</button><button type="button" id="bEjCerrar">Cerrar</button></div>
+  <pre id="ejTexto"></pre>
 </div></div>
 
 <script>
 (function () {
-  var clave = "";
-  try { clave = sessionStorage.getItem("adminClave") || ""; } catch (e) {}
+  var clave = "";        // solo al entrar; después vale la sesión (cookie) que comparten todas las pestañas
+  var EJ = {}, EJ_DE = "Lavanda";
   var actual = null;     // ficha que se edita
   var esNueva = false, esFija = false, vistaDatos = null;
 
@@ -451,8 +563,8 @@ const PAGINA = `<!doctype html>
       ["horario", "Horario", "Como frase: de 8:00 a 21:00"],
       ["zonaHoraria", "Zona horaria", "Normalmente Europe/Madrid"],
       ["resenaUrl", "Enlace de reseñas de Google", ""],
-      ["equipoCobro", "Con qué se paga", "Frase corta: del cajero / del lector de tarjetas"],
-      ["ejemploNoExiste", "Algo que el asistente no debe inventar", "no existe ninguna máquina de cambio"]
+      ["equipoCobro", "Aparato de pago (opcional)", "Para las fotos de los clientes: del cajero / del lector de tarjetas. Vacío si se paga en la propia máquina."],
+      ["ejemploNoExiste", "Algo que el asistente no debe inventar (opcional)", "Un ejemplo, como frase: no existe ninguna máquina de cambio"]
     ]],
     ["Conexiones", [
       ["origenesPermitidos", "Webs donde va el chat", "Una por línea: https://pepitolava.es", "lista"],
@@ -476,7 +588,7 @@ const PAGINA = `<!doctype html>
       ["normas.web", "Chat de la web: qué hace ante un problema", "", "texto"],
       ["normas.whatsapp", "WhatsApp: cuándo sugerir llamar y qué no prometer", "", "texto"],
       ["normas.avisos", "WhatsApp: cuándo avisar al equipo", "", "texto"],
-      ["normas.voz", "Voz: adaptaciones al teléfono", "", "grande"],
+      ["normas.voz", "Voz: adaptaciones al teléfono", "Solo si tiene número de voz", "grande"],
       ["normas.motivosAviso", "Motivos de aviso al dueño", "Uno por línea: clave | nombre | título del mensaje", "motivos"],
       ["normas.herramientaAviso.cuando", "Cuándo se avisa (para la herramienta)", "", "texto"],
       ["normas.herramientaAviso.importe", "Qué es el importe", ""],
@@ -503,25 +615,34 @@ const PAGINA = `<!doctype html>
 
   function api(accion, datos) {
     var cuerpo = JSON.stringify(Object.assign({ accion: accion }, datos || {}));
-    return fetch("/admin/api", { method: "POST", headers: { "Content-Type": "application/json", "X-Clave": clave }, body: cuerpo })
+    var cab = { "Content-Type": "application/json" };
+    if (clave) cab["X-Clave"] = clave;
+    return fetch("/admin/api", { method: "POST", headers: cab, body: cuerpo, credentials: "same-origin" })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._estado = r.status; return j; }); })
-      .then(function (j) { if (j._estado === 401) { salir("Contraseña incorrecta."); } return j; });
+      .then(function (j) { if (j._estado === 401) { pedirClave(j.sinSesion ? "" : "Contraseña incorrecta."); } return j; });
   }
 
-  function salir(motivo) {
-    clave = ""; try { sessionStorage.removeItem("adminClave"); } catch (e) {}
+  function pedirClave(motivo) {
+    clave = "";
     $("login").hidden = false; $("loginError").textContent = motivo || "";
+  }
+  function entrar(j) {
+    clave = "";   // a partir de aquí, la sesión
+    $("login").hidden = true; pintarLista(j);
+    api("ejemplos").then(function (e) { if (e._estado === 200) { EJ = e.ejemplos; EJ_DE = e.de; } });
   }
 
   $("fLogin").addEventListener("submit", function (ev) {
     ev.preventDefault();
     clave = $("clave").value;
     api("listar").then(function (j) {
-      if (j._estado === 200) { try { sessionStorage.setItem("adminClave", clave); } catch (e) {} $("login").hidden = true; pintarLista(j); }
+      if (j._estado === 200) entrar(j);
       else if (j._estado !== 401) { $("loginError").textContent = j.error || "No se pudo entrar."; }
     });
   });
-  $("bSalir").addEventListener("click", function () { salir(""); });
+  $("bSalir").addEventListener("click", function () {
+    fetch("/admin/salir", { method: "POST", credentials: "same-origin" }).then(function () { pedirClave(""); }, function () { pedirClave(""); });
+  });
 
   // ---------- Lista ----------
   function cargarLista() { api("listar").then(function (j) { if (j._estado === 200) pintarLista(j); }); }
@@ -584,7 +705,7 @@ const PAGINA = `<!doctype html>
     actual = ficha;
     $("vLista").hidden = true; $("vEditor").hidden = false; $("msgEditor").textContent = "";
     $("tituloEditor").textContent = esNueva ? "Nueva lavandería" : (ficha.nombre + (esFija ? " (fija: solo lectura)" : ""));
-    if (esNueva) mensajes($("msgEditor"), ["Las secciones y normas vienen copiadas de Lavanda como punto de partida: cámbialas por las de esta lavandería (sobre todo cómo cobra y cómo devuelve el dinero). Los huecos como {{telefono}} se rellenan solos con sus datos."], "aviso");
+    if (esNueva) mensajes($("msgEditor"), ["Empieza vacía. En cada sección tienes «Ver ejemplo» con lo que tiene " + EJ_DE + " (cajero de efectivo y Bizum): úsalo como guía, pero escribe lo de esta lavandería. Puedes guardar a medias: se queda como borrador hasta que esté completa."], "aviso");
     var f = $("fFicha"); f.textContent = "";
     CAMPOS.forEach(function (grupo) {
       var t = el("div", { "class": "tarjeta" }, [el("h2", { texto: grupo[0] })]);
@@ -597,7 +718,9 @@ const PAGINA = `<!doctype html>
         else if (tipo === "motivos") campo.value = (valor || []).map(function (m) { return [m.clave, m.nombre, m.titulo].join(" | "); }).join("\\n");
         else campo.value = valor == null ? "" : valor;
         if (esFija || (ruta === "id" && !esNueva)) campo.disabled = true;
-        rejilla.appendChild(el("div", {}, [el("label", {}, [document.createTextNode(c[1] + " "), c[2] ? el("small", { texto: c[2] }) : null]), campo]));
+        var bEj = null;
+        if (!esFija && EJ[ruta]) { bEj = el("button", { type: "button", "class": "ej", texto: "Ver ejemplo" }); bEj.addEventListener("click", verEjemplo.bind(null, c[1], ruta, campo)); }
+        rejilla.appendChild(el("div", {}, [el("label", {}, [document.createTextNode(c[1] + " "), c[2] ? el("small", { texto: c[2] }) : null, bEj]), campo]));
       });
       t.appendChild(rejilla); f.appendChild(t);
     });
@@ -637,8 +760,13 @@ const PAGINA = `<!doctype html>
     api("guardar", { ficha: ficha, nueva: esNueva }).then(function (j) {
       b.disabled = false; $("msgEditor").textContent = "";
       if (j._estado !== 200) { mensajes($("msgEditor"), j.errores || [j.error], "error"); window.scrollTo(0, 0); return; }
-      if (esNueva) { esNueva = false; abrir(ficha.id, ["Guardada como borrador. Ahora conecta su WhatsApp (abajo) y, desde la lista, actívala."], j.avisos); return; }
-      mensajes($("msgEditor"), ["Guardado."], "bien"); mensajes($("msgEditor"), j.avisos, "aviso");
+      var falta = (j.incompleta || []).map(function (m) { return "Guardada como borrador. Para poder activarla: " + m; });
+      if (esNueva) {
+        esNueva = false;
+        abrir(ficha.id, [falta.length ? "Guardada." : "Guardada como borrador. Ahora conecta su WhatsApp (abajo) y, desde la lista, actívala."], falta.concat(j.avisos || []));
+        return;
+      }
+      mensajes($("msgEditor"), ["Guardado."], "bien"); mensajes($("msgEditor"), falta.concat(j.avisos || []), "aviso");
       window.scrollTo(0, 0);
     });
   });
@@ -677,18 +805,58 @@ const PAGINA = `<!doctype html>
   });
 
   // ---------- Vista previa ----------
-  $("bVista").addEventListener("click", function () {
+  var vistaCanal = "whatsapp", vistaTimer = null, vistaPedida = 0;
+  function refrescarVista() {
+    var n = ++vistaPedida;
+    $("vistaEstado").textContent = "· actualizando…";
     api("vista", { ficha: leerFormulario() }).then(function (j) {
-      $("msgEditor").textContent = "";
-      if (j._estado !== 200) { mensajes($("msgEditor"), j.errores || [j.error], "error"); window.scrollTo(0, 0); return; }
-      vistaDatos = j; mostrarVista("whatsapp"); $("vista").hidden = false;
+      if (n !== vistaPedida) return;   // ya hay otra petición más nueva
+      $("vistaErrores").textContent = "";
+      if (j._estado !== 200) {
+        mensajes($("vistaErrores"), j.errores || [j.error], "error");
+        $("vista").classList.add("viejo");
+        $("vistaEstado").textContent = vistaDatos ? "· con errores (se ve la última versión válida)" : "· con errores";
+        return;
+      }
+      vistaDatos = j; $("vista").classList.remove("viejo"); mostrarVista(vistaCanal);
+      $("vistaEstado").textContent = "· al día (" + new Date().toLocaleTimeString("es-ES") + ")";
     });
+  }
+  function abrirVista() { $("vista").hidden = false; document.body.classList.add("con-vista"); refrescarVista(); }
+  function cerrarVista() { $("vista").hidden = true; document.body.classList.remove("con-vista"); }
+  $("bVista").addEventListener("click", abrirVista);   // si ya está abierta, la actualiza
+  // Mientras está abierta, se actualiza sola al escribir
+  $("fFicha").addEventListener("input", function () {
+    if ($("vista").hidden) return;
+    clearTimeout(vistaTimer); vistaTimer = setTimeout(refrescarVista, 800);
   });
-  function mostrarVista(cual) { $("vistaTexto").textContent = cual === "voz" ? "Saludo: " + vistaDatos.saludo + "\\n\\n" + vistaDatos.voz : vistaDatos[cual]; }
+  function mostrarVista(cual) {
+    vistaCanal = cual;
+    document.querySelectorAll("#vista [data-v]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === cual)); });
+    if (!vistaDatos) return;
+    $("vistaTexto").textContent = cual === "voz" ? "Saludo: " + vistaDatos.saludo + "\\n\\n" + vistaDatos.voz : vistaDatos[cual];
+  }
   document.querySelectorAll("#vista [data-v]").forEach(function (b) { b.addEventListener("click", function () { mostrarVista(b.getAttribute("data-v")); }); });
-  $("bCerrarVista").addEventListener("click", function () { $("vista").hidden = true; });
+  $("bCerrarVista").addEventListener("click", cerrarVista);
+  $("bVolver").addEventListener("click", cerrarVista);
 
-  if (clave) { api("listar").then(function (j) { if (j._estado === 200) { $("login").hidden = true; pintarLista(j); } }); }
+  // ---------- Ejemplo de Lavanda para un campo ----------
+  var ejCampo = null;
+  function verEjemplo(titulo, ruta, campo) {
+    ejCampo = campo;
+    $("ejTitulo").textContent = titulo; $("ejDe").textContent = " · ejemplo de " + EJ_DE;
+    $("ejTexto").textContent = EJ[ruta];
+    $("bEjUsar").hidden = Boolean(campo.value.trim());   // solo si el campo está vacío: nunca pisa lo escrito
+    $("ejemplo").hidden = false;
+  }
+  $("bEjUsar").addEventListener("click", function () {
+    if (ejCampo && !ejCampo.value.trim()) { ejCampo.value = $("ejTexto").textContent; ejCampo.dispatchEvent(new Event("input", { bubbles: true })); }
+    $("ejemplo").hidden = true;
+  });
+  $("bEjCerrar").addEventListener("click", function () { $("ejemplo").hidden = true; });
+
+  // ¿Hay una sesión abierta (en esta u otra pestaña)? Entonces no se pide la contraseña
+  api("listar").then(function (j) { if (j._estado === 200) entrar(j); });
 })();
 </script>
 </body>

@@ -91,7 +91,8 @@ export async function prepararRegistro(env, { forzar = false, ahora = Date.now()
       crearTextos(ficha);
       nuevas[ficha.id] = ficha;
     } catch (e) {
-      console.error(`Registro: la ficha "${guardada.id}" no es válida y no se atiende: ${e.message}`);
+      // un borrador a medias es normal: solo se avisa si estaba ACTIVA (entonces sí es un problema)
+      if (guardada.activa) console.error(`Registro: la ficha ACTIVA "${guardada.id}" no es válida y no se atiende: ${e.message}`);
     }
   }
   FICHAS_BD = nuevas;
@@ -194,6 +195,7 @@ export function comprobarActivacion(env, cliente) {
     if (!o.ficha.numerosVoz.length) avisos.push(`${o.ficha.nombre} no tiene número de voz en su ficha: con dos lavanderías activas sus llamadas se rechazarán.`);
   }
   avisos.push(...restosDeOtras(f).map((r) => `Parece que quedan datos de ${r.de}: "${r.texto}".`));
+  avisos.push(...seccionesCopiadas(f).map(textoCopiada));
   return { errores, avisos };
 }
 
@@ -217,3 +219,32 @@ export function restosDeOtras(ficha) {
 function datoClave(o, dato) {
   return Object.keys(o).find((k) => o[k] === dato);
 }
+
+// Secciones y normas IGUALES a las de otra lavandería (típico al partir de su ejemplo y no cambiarlo)
+const NOMBRES_SECCIONES = {
+  general: "Información general", precios: "Precios y máquinas", pago: "Forma de pago", lavadoras: "Cómo usar las lavadoras",
+  secadora: "Cómo usar la secadora", permitido: "Qué se puede lavar", consejos: "Consejos y servicios",
+  fidelizacion: "Tarjeta de fidelización", olvidada: "Ropa olvidada",
+};
+const NOMBRES_NORMAS = {
+  procedimientos: "Problemas con máquinas, dinero y devoluciones", web: "Chat de la web ante un problema",
+  whatsapp: "WhatsApp: cuándo sugerir llamar", avisos: "WhatsApp: cuándo avisar al equipo", voz: "Voz: adaptaciones al teléfono",
+};
+const normalizar = (t) => String(t || "").replace(/\s+/g, " ").trim();
+export function seccionesCopiadas(ficha) {
+  const iguales = [];
+  for (const id of idsDeClientes()) {
+    if (id === ficha.id) continue;
+    const o = fichas()[id];
+    for (const [k, nombre] of Object.entries(NOMBRES_SECCIONES)) {
+      const t = normalizar(ficha.conocimiento?.[k]);
+      if (t && t === normalizar(o.conocimiento?.[k])) iguales.push({ de: o.nombre, seccion: nombre });
+    }
+    for (const [k, nombre] of Object.entries(NOMBRES_NORMAS)) {
+      const t = normalizar(ficha.normas?.[k]);
+      if (t && t === normalizar(o.normas?.[k])) iguales.push({ de: o.nombre, seccion: nombre });
+    }
+  }
+  return iguales;
+}
+export const textoCopiada = (c) => `"${c.seccion}" es igual que la de ${c.de}: revisa que valga para esta lavandería.`;
