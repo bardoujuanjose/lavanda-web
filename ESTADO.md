@@ -92,8 +92,10 @@ detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene
 1. **Voz y Twilio** (en curso)
    - **Decisión (09/11/2026): Lavanda usa el asistente de voz propio (`/voz`), no Retell.** Mismas normas que WhatsApp, voz de Sofía
      (ElevenLabs), pasa la llamada al móvil del dueño en los casos difíciles y avisa por WhatsApp.
-   - Paquete regulatorio de Twilio ("Lavanda", España, Individual, Local): **aprobado**. **El número 977 ya está pedido** (5,50 $/mes,
-     entrega estimada de 1 a 24 h); a 09/11/2026 aún no aparece en Active numbers. **No comprar otro.**
+   - Paquete regulatorio de Twilio ("Lavanda", España, Individual, Local): **aprobado**. El 09/11/2026 el soporte de Twilio
+     (Onboarding & Compliance) contestó que no puede activar el número directamente y que hay que pedirlo con el **formulario
+     "Console Exclusive Number order form"** (España, Local, 977, Voice, 1 número, con ese paquete). El 10/11/2026 el dueño dice que
+     ya lo ha rellenado (sin verificar). Espera a que Twilio lo active. **No comprar otro.**
    - **Siguiente paso:** cuando aparezca en Active numbers: Voice → A call comes in → Webhook
      `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST) y probar llamando desde un móvil.
    - El trunk SIP `retell-limpoi` (creado para Retell) no se usa; dejarlo sin tocar. Puede ser de Limpoi.
