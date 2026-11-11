@@ -164,6 +164,7 @@ export async function atenderVoz(request, env, ctx) {
       console.log(`Voz [prueba]: velocidad ${p.VelocidadPrueba} → ${atributos.voice}`);
     }
     if (env.VOZ_STT_PROVIDER) atributos.transcriptionProvider = env.VOZ_STT_PROVIDER;
+    if (env.VOZ_STT_MODELO) atributos.speechModel = env.VOZ_STT_MODELO;   // p. ej. "flux" (Deepgram Flux)
     const attr = Object.entries(atributos).map(([k, v]) => `${k}="${xml(v)}"`).join(" ");
     return twiml(`<Connect action="${xml(fin.toString())}"><ConversationRelay ${attr}/></Connect>`);
   }
