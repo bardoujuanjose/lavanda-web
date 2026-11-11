@@ -34,7 +34,7 @@ export const FICHA_LAVANDA = {
     dueno: "OWNER_PHONE",           // móvil del dueño (recibe los avisos)
   },
   // Números de Twilio por los que reciben llamadas esta lavandería (formato +34…). Vacío mientras no tenga.
-  numerosVoz: [],
+  numerosVoz: ["+34877248094"],
   // Plantilla de Meta para avisar al dueño cuando pasaron más de 24 h desde su último mensaje. Es de la cuenta de
   // WhatsApp de cada lavandería. Sin este dato se usa OWNER_TEMPLATE / OWNER_TEMPLATE_LANG (hoy: aviso_lavanda, es).
   // plantillaAviso: { nombre: "aviso_lavanda", idioma: "es" },

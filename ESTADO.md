@@ -95,7 +95,8 @@ detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene
    - Paquete regulatorio de Twilio ("Lavanda", España, Individual, Local): **aprobado**. El 09/11/2026 el soporte de Twilio
      (Onboarding & Compliance) contestó que no puede activar el número directamente y que hay que pedirlo con el **formulario
      "Console Exclusive Number order form"** (España, Local, 977, Voice, 1 número, con ese paquete). El 10/11/2026 el dueño dice que
-     ya lo ha rellenado (sin verificar). Espera a que Twilio lo active. **No comprar otro.**
+     ya lo ha rellenado. **11/11/2026: Twilio entregó el número +34 877 248 094** (prefijo 877, no 977). Ya está en `numerosVoz`
+     de la ficha de Lavanda. Falta poner su webhook de voz (abajo) y probar. **No comprar otro.**
    - **Siguiente paso:** cuando aparezca en Active numbers: Voice → A call comes in → Webhook
      `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST) y probar llamando desde un móvil.
    - El trunk SIP `retell-limpoi` (creado para Retell) no se usa; dejarlo sin tocar. Puede ser de Limpoi.

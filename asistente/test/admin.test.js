@@ -169,7 +169,7 @@ test("conexión de WhatsApp: el token se guarda cifrado y el panel nunca lo devu
 test("ACTIVAR: avisa de lo que afecta a Lavanda y, ya activa, se atiende con SU token", async () => {
   const r = await panel("activar", { id: "pepito", activa: true });
   assert.equal(r.estado, 200, JSON.stringify(r));
-  assert.ok(r.avisos.some((a) => /Lavanda no tiene número de voz/.test(a)), JSON.stringify(r.avisos));
+  assert.ok(!r.avisos.some((a) => /Lavanda no tiene número de voz/.test(a)), "Lavanda ya tiene su número de voz: " + JSON.stringify(r.avisos));
   const p = buscarClientePorWhatsApp(ENV, "109999999999999");
   assert.equal(p.ficha.id, "pepito");
   assert.equal(entornoDe(ENV, p).WHATSAPP_TOKEN, "tokenPepito", "el token se descifra en memoria");
