@@ -111,6 +111,13 @@ export function saludoConAviso(saludo, aviso) {
   return m ? `${m[1]} ${texto} ${m[2]}` : `${saludo} ${texto}`;
 }
 
+// Cuánto suena cada móvil al pasar la llamada antes de probar el siguiente (VOZ_SEGUNDOS_SONANDO; por defecto 15 s).
+// Si es muy largo, el buzón de voz del móvil puede "contestar" antes que la persona.
+export function segundosSonando(env) {
+  const n = Number(env?.VOZ_SEGUNDOS_SONANDO);
+  return Number.isFinite(n) && n >= 5 && n <= 60 ? Math.round(n) : 15;
+}
+
 export async function atenderVoz(request, env, ctx) {
   const url = new URL(request.url);
 
@@ -195,7 +202,7 @@ export async function atenderVoz(request, env, ctx) {
       tras.search = new URLSearchParams({ k: cliente.ficha.id, r: String(datos.resumen || "").slice(0, 300), n: "1" }).toString();
       return twiml(
         frase("pasar", "Te paso con un compañero, un momento por favor.", env, url) +
-        `<Dial timeout="25" callerId="${xml(idCallerId)}" action="${xml(tras.toString())}"><Number>+${xml(dueno)}</Number></Dial>`,
+        `<Dial timeout="${segundosSonando(env)}" callerId="${xml(idCallerId)}" action="${xml(tras.toString())}"><Number>+${xml(dueno)}</Number></Dial>`,
       );
     }
     if (p.ErrorCode || p.SessionStatus === "failed") {
@@ -217,7 +224,7 @@ export async function atenderVoz(request, env, ctx) {
       const segundo = new URL(url);
       segundo.protocol = "https:";
       segundo.search = new URLSearchParams({ k: cliente.ficha.id, r: resumen, n: "2" }).toString();
-      return twiml(`<Dial timeout="25" callerId="${xml(idLlamante)}" action="${xml(segundo.toString())}"><Number>+${xml(dueno2)}</Number></Dial>`);
+      return twiml(`<Dial timeout="${segundosSonando(env)}" callerId="${xml(idLlamante)}" action="${xml(segundo.toString())}"><Number>+${xml(dueno2)}</Number></Dial>`);
     }
     ctx?.waitUntil?.(
       avisarDueno({
