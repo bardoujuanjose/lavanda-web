@@ -208,7 +208,10 @@ cobro de la suscripción.
   corta. Cada lavandería con voz necesita su número de Twilio en `numerosVoz` y **España activada** en Twilio → Voice → Geo permissions.
 - Panel `/admin` → Conexión: nuevo campo **Segundo móvil (opcional)**; si el primero no contesta la llamada pasada (15 s), suena ese.
   Las fichas fijas lo toman del secreto que indique `secretos.dueno2` (Lavanda: `OWNER_PHONE_2`).
-- Página de privacidad de Lavanda actualizada con las llamadas (no se graban). Por decisión del dueño (11/11/2026) **no nombra a los
+- **12/11/2026 (decisión del dueño): se guardan por escrito las llamadas** (sin audio), con el teléfono de quien llama, máximo 1 año (el mismo
+  plazo que WhatsApp; el dueño valorará acortarlo y preguntar a la gestoría). La política de privacidad ya lo dice. Marketing: solo con consentimiento
+  aparte y opcional; por ahora NO se usan las llamadas para campañas. Desde esta fecha el 877 248 094 lo atiende el servidor de Limpoi (repo limpoi).
+- Página de privacidad de Lavanda actualizada con las llamadas. Por decisión del dueño (11/11/2026) **no nombra a los
   proveedores**, solo sus categorías (mensajería, telefonía, IA, alojamiento). Revisar el texto antes de reutilizarlo para otras lavanderías.
 
 ### Prueba con una segunda lavandería (06/11/2026)
