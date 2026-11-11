@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { firmaTwilioValida, paseLlamada, crearSesion, atenderVoz } from "../src/voz.js";
+import { firmaTwilioValida, paseLlamada, crearSesion, atenderVoz, saludoConAviso } from "../src/voz.js";
 
 const ENV = { TWILIO_AUTH_TOKEN: "tok", OWNER_PHONE: "600111222" };
 
@@ -34,6 +34,18 @@ test("una llamada nueva conecta con el asistente (voz de mujer, español)", asyn
   assert.match(t, /welcomeGreeting="¡Hola!… Soy el asistente virtual de Lavanda/);
   const mala = new Request("https://x.dev/voz", { method: "POST", headers: { "X-Twilio-Signature": "x" }, body: "CallSid=CA1" });
   assert.equal((await atenderVoz(mala, ENV)).status, 403);
+});
+
+test("aviso de pruebas: se añade al saludo, justo antes de la pregunta final, y sin aviso queda igual", async () => {
+  const saludo = "¡Hola!… Soy el asistente virtual de Lavanda. ¿En qué puedo ayudarte?";
+  assert.equal(saludoConAviso(saludo, ""), saludo);
+  assert.equal(saludoConAviso(saludo, undefined), saludo);
+  assert.equal(
+    saludoConAviso(saludo, "Estoy en pruebas, así que disculpa si algo no sale bien."),
+    "¡Hola!… Soy el asistente virtual de Lavanda. Estoy en pruebas, así que disculpa si algo no sale bien. ¿En qué puedo ayudarte?",
+  );
+  const r = await atenderVoz(peticion("https://x.dev/voz", { CallSid: "CA1", From: "+34612345678" }), { ...ENV, VOZ_AVISO_PRUEBAS: "Estoy en pruebas." });
+  assert.match(await r.text(), /welcomeGreeting="¡Hola!… Soy el asistente virtual de Lavanda\. Estoy en pruebas\. ¿En qué puedo ayudarte\?"/);
 });
 
 test("al pasar la llamada suena en el móvil del dueño, y si no contesta se le avisa", async () => {

@@ -102,6 +102,15 @@ async function comprobarFirma(request, env) {
 // ---------------------------------------------------------------------
 //  Rutas HTTP
 // ---------------------------------------------------------------------
+// Mientras el asistente está en pruebas se puede añadir un aviso al saludo (variable VOZ_AVISO_PRUEBAS; vacía = sin aviso).
+// Va justo antes de la pregunta final: "¡Hola!… Soy el asistente… <aviso> ¿En qué puedo ayudarte?"
+export function saludoConAviso(saludo, aviso) {
+  const texto = String(aviso || "").trim();
+  if (!texto) return saludo;
+  const m = String(saludo).match(/^(.*?)\s*(¿[^¿]*\?)\s*$/s);
+  return m ? `${m[1]} ${texto} ${m[2]}` : `${saludo} ${texto}`;
+}
+
 export async function atenderVoz(request, env, ctx) {
   const url = new URL(request.url);
 
@@ -144,7 +153,7 @@ export async function atenderVoz(request, env, ctx) {
     const atributos = {
       url: ws.toString(),
       language: env.VOZ_IDIOMA || "es-ES",
-      welcomeGreeting: textos.SALUDO_VOZ,
+      welcomeGreeting: saludoConAviso(textos.SALUDO_VOZ, env.VOZ_AVISO_PRUEBAS),
       ttsProvider: env.VOZ_TTS_PROVIDER || "Amazon",
       voice: env.VOZ_VOZ || "Lucia-Neural",
     };
