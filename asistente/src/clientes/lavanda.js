@@ -32,6 +32,7 @@ export const FICHA_LAVANDA = {
     phoneId: "WHATSAPP_PHONE_ID",   // identificador de su número de WhatsApp en Meta
     token: "WHATSAPP_TOKEN",        // token de WhatsApp de ese número
     dueno: "OWNER_PHONE",           // móvil del dueño (recibe los avisos)
+    dueno2: "OWNER_PHONE_2",        // segundo móvil (opcional): si el primero no contesta la llamada pasada, se prueba este
   },
   // Números de Twilio por los que reciben llamadas esta lavandería (formato +34…). Vacío mientras no tenga.
   numerosVoz: ["+34877248094"],

@@ -192,7 +192,7 @@ export async function atenderVoz(request, env, ctx) {
     if (datos.accion === "pasar" && dueno) {
       const tras = new URL("/voz/tras-dial", url);
       tras.protocol = "https:";
-      tras.search = new URLSearchParams({ k: cliente.ficha.id, r: String(datos.resumen || "").slice(0, 300) }).toString();
+      tras.search = new URLSearchParams({ k: cliente.ficha.id, r: String(datos.resumen || "").slice(0, 300), n: "1" }).toString();
       return twiml(
         frase("pasar", "Te paso con un compañero, un momento por favor.", env, url) +
         `<Dial timeout="25" callerId="${xml(idCallerId)}" action="${xml(tras.toString())}"><Number>+${xml(dueno)}</Number></Dial>`,
@@ -209,6 +209,16 @@ export async function atenderVoz(request, env, ctx) {
   if (url.pathname === "/voz/tras-dial") {
     if (p.DialCallStatus === "completed") return twiml("<Hangup/>");
     const resumen = url.searchParams.get("r") || "";
+    // Si el primer móvil no contesta y hay un segundo, se prueba con ese antes de rendirse
+    const dueno1 = normalizarTelefono(envC.OWNER_PHONE);
+    const dueno2 = normalizarTelefono(envC.OWNER_PHONE_2);
+    const idLlamante = /^\+\d{6,}$/.test(p.From || "") ? p.From : /^\+\d{6,}$/.test(p.To || "") ? p.To : "";
+    if (url.searchParams.get("n") === "1" && dueno2 && dueno2 !== dueno1 && idLlamante) {
+      const segundo = new URL(url);
+      segundo.protocol = "https:";
+      segundo.search = new URLSearchParams({ k: cliente.ficha.id, r: resumen, n: "2" }).toString();
+      return twiml(`<Dial timeout="25" callerId="${xml(idLlamante)}" action="${xml(segundo.toString())}"><Number>+${xml(dueno2)}</Number></Dial>`);
+    }
     ctx?.waitUntil?.(
       avisarDueno({
         env: envC, cliente, wa: clienteWhatsApp(envC), telefono: normalizarTelefono(p.From), nombre: "",

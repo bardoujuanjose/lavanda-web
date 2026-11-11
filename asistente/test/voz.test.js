@@ -63,6 +63,29 @@ test("al pasar la llamada suena en el móvil del dueño, y si no contesta se le 
   assert.equal(tareas.length, 1);
 });
 
+test("si el primer móvil no contesta, se prueba el segundo antes de rendirse", async () => {
+  const E2 = { ...ENV, OWNER_PHONE_2: "677 000 111" };
+  // pasar la llamada: primero al móvil del dueño, marcando que es el intento 1
+  const fin = await (await atenderVoz(peticion("https://x.dev/voz/fin", { CallSid: "CA1", From: "+34612345678", HandoffData: JSON.stringify({ accion: "pasar", resumen: "Puerta 3" }) }), E2)).text();
+  assert.match(fin, /<Number>\+34600111222<\/Number>/);
+  assert.match(fin, /n=1/);
+  // el primero no contesta -> se llama al segundo, sin avisar todavía de llamada perdida
+  const tareas = [];
+  const t1 = await (await atenderVoz(peticion("https://x.dev/voz/tras-dial?k=lavanda&r=Puerta&n=1", { DialCallStatus: "no-answer", From: "+34612345678" }), E2, { waitUntil: (p) => tareas.push(p) })).text();
+  assert.match(t1, /<Number>\+34677000111<\/Number>/);
+  assert.match(t1, /n=2/);
+  assert.equal(tareas.length, 0);
+  // el segundo tampoco contesta -> mensaje de "escríbenos por WhatsApp" y aviso de llamada perdida
+  const t2 = await (await atenderVoz(peticion("https://x.dev/voz/tras-dial?k=lavanda&r=Puerta&n=2", { DialCallStatus: "no-answer", From: "+34612345678" }), { ...E2, WHATSAPP_TOKEN: "" }, { waitUntil: (p) => tareas.push(p) })).text();
+  assert.match(t2, /<Play>https:\/\/x.dev\/audio\/no-contesta.mp3<\/Play>/);
+  assert.equal(tareas.length, 1);
+  // si el segundo contesta, se cuelga sin más
+  assert.match(await (await atenderVoz(peticion("https://x.dev/voz/tras-dial?k=lavanda&n=2", { DialCallStatus: "completed", From: "+34612345678" }), E2)).text(), /<Hangup\/>/);
+  // sin segundo móvil, igual que antes
+  const sin = await (await atenderVoz(peticion("https://x.dev/voz/tras-dial?k=lavanda&n=1", { DialCallStatus: "no-answer", From: "+34612345678" }), { ...ENV, WHATSAPP_TOKEN: "" }, { waitUntil: (p) => tareas.push(p) })).text();
+  assert.match(sin, /no-contesta.mp3/);
+});
+
 test("el WebSocket exige el pase de la llamada", async () => {
   const pase = await paseLlamada(ENV, "CA1");
   const mal = new Request("https://x.dev/voz/ws?c=CA1&t=000", { headers: { Upgrade: "websocket" } });

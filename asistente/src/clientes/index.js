@@ -122,16 +122,17 @@ async function abrirFicha(guardada, env) {
 // ---------------------------------------------------------------------
 export function conexionDe(env, cliente) {
   const f = cliente.ficha;
-  if (f.conexion) return { phoneId: f.conexion.phoneId || "", token: f.conexion.token || "", dueno: f.conexion.dueno || "" };
+  if (f.conexion) return { phoneId: f.conexion.phoneId || "", token: f.conexion.token || "", dueno: f.conexion.dueno || "", dueno2: f.conexion.dueno2 || "" };
   const s = f.secretos || {};
-  return { phoneId: env[s.phoneId] || "", token: env[s.token] || "", dueno: env[s.dueno] || "" };
+  // dueno2: segundo móvil (opcional) al que se pasa la llamada si el primero no contesta
+  return { phoneId: env[s.phoneId] || "", token: env[s.token] || "", dueno: env[s.dueno] || "", dueno2: s.dueno2 ? env[s.dueno2] || "" : "" };
 }
 
 // El entorno "visto por esa lavandería": el resto del código sigue leyendo env.WHATSAPP_TOKEN,
 // env.WHATSAPP_PHONE_ID y env.OWNER_PHONE sin saber de cuál es.
 export function entornoDe(env, cliente) {
   const c = conexionDe(env, cliente);
-  return { ...env, WHATSAPP_PHONE_ID: c.phoneId, WHATSAPP_TOKEN: c.token, OWNER_PHONE: c.dueno };
+  return { ...env, WHATSAPP_PHONE_ID: c.phoneId, WHATSAPP_TOKEN: c.token, OWNER_PHONE: c.dueno, OWNER_PHONE_2: c.dueno2 };
 }
 
 // ---------------------------------------------------------------------
