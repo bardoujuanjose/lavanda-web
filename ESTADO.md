@@ -97,8 +97,13 @@ detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene
      "Console Exclusive Number order form"** (España, Local, 977, Voice, 1 número, con ese paquete). El 10/11/2026 el dueño dice que
      ya lo ha rellenado. **11/11/2026: Twilio entregó el número +34 877 248 094** (prefijo 877, no 977). Ya está en `numerosVoz`
      de la ficha de Lavanda. Falta poner su webhook de voz (abajo) y probar. **No comprar otro.**
-   - **Siguiente paso:** cuando aparezca en Active numbers: Voice → A call comes in → Webhook
-     `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (POST) y probar llamando desde un móvil.
+   - **Hecho 11/11/2026:** webhook de voz del +34 877 248 094 puesto (`…/voz`, POST, región US1) y llamada real probada desde otro
+     teléfono: el asistente contesta y pasa la llamada al móvil del dueño. Hizo falta activar **Spain** en Twilio → Voice → Settings →
+     Geo permissions (error 13227). Si el dueño llama desde su propio móvil, no suena (es el mismo). Para reducir la espera se activó
+     Deepgram con el modelo **Flux** (`VOZ_STT_PROVIDER`, `VOZ_STT_MODELO` en `wrangler.toml`; borrar esas líneas para volver atrás):
+     "ha mejorado". El asistente tarda <1 s (registros de Cloudflare); el resto es Twilio y la línea. Idea descartada por ahora:
+     Haiku 5.5 (sin función de reserva ante rechazos, piensa por defecto, ganancia pequeña). Región Irlanda IE1: sin comprobar.
+   - **Siguiente paso:** decidir el desvío de Movistar (abajo) y avisar a Carmen/Juanjo cuando se active.
    - El trunk SIP `retell-limpoi` (creado para Retell) no se usa; dejarlo sin tocar. Puede ser de Limpoi.
    - **Desvío en Movistar, por decidir:** `**61*NUMERO**20#` (solo si no contestas en 20 s) o `**21*NUMERO#` (todas las llamadas al
      asistente; el dueño ya no recibe ninguna directamente). Se cancela con `##002#` / `##61#`. El 689 810 213 no se porta.
