@@ -49,6 +49,9 @@ VOZ_TTS_PROVIDER = "ElevenLabs"
 # Voz elegida en ElevenLabs: "VoiceID-modelo-velocidad_estabilidad_similitud" (velocidad 0.9)
 VOZ_VOZ = "2BJPFS2QZRUEpfkbclGy-flash_v2_5-0.9_0.5_0.75"
 OWNER_TEMPLATE_LANG = "es"
+# Reconocimiento de voz de Twilio (prueba 11/11/2026 por si responde más rápido). Para volver al de antes:
+# borrar esta línea (o poner "Google").
+VOZ_STT_PROVIDER = "Deepgram"
 # App de Meta para que cada lavandería conecte su WhatsApp ("registro integrado", página /alta/…).
 # META_APP_ID: arriba del todo en el panel de la app de Meta. META_CONFIG_ID: Facebook Login for Business →
 # Configurations (plantilla "WhatsApp Embedded Signup"). No son secretos. Descoméntalas al tenerlas:
