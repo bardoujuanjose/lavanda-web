@@ -103,6 +103,9 @@ detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene
      Deepgram con el modelo **Flux** (`VOZ_STT_PROVIDER`, `VOZ_STT_MODELO` en `wrangler.toml`; borrar esas líneas para volver atrás):
      "ha mejorado". El asistente tarda <1 s (registros de Cloudflare); el resto es Twilio y la línea. Idea descartada por ahora:
      Haiku 5.5 (sin función de reserva ante rechazos, piensa por defecto, ganancia pequeña). Región Irlanda IE1: sin comprobar.
+   - Saludo de voz (11/11/2026): lleva un aviso de pruebas ("Estoy en pruebas, así que disculpa si algo no sale bien.") que se quita
+     borrando `VOZ_AVISO_PRUEBAS` en `wrangler.toml`; y no se puede interrumpir (`welcomeGreetingInterruptible="none"`) porque se cortaba.
+     Probado: se oye entero.
    - **Siguiente paso:** decidir el desvío de Movistar (abajo) y avisar a Carmen/Juanjo cuando se active.
    - El trunk SIP `retell-limpoi` (creado para Retell) no se usa; dejarlo sin tocar. Puede ser de Limpoi.
    - **Desvío en Movistar, por decidir:** `**61*NUMERO**20#` (solo si no contestas en 20 s) o `**21*NUMERO#` (todas las llamadas al
