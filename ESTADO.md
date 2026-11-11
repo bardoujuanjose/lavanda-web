@@ -208,8 +208,8 @@ cobro de la suscripción.
   corta. Cada lavandería con voz necesita su número de Twilio en `numerosVoz` y **España activada** en Twilio → Voice → Geo permissions.
 - Panel `/admin` → Conexión: nuevo campo **Segundo móvil (opcional)**; si el primero no contesta la llamada pasada (15 s), suena ese.
   Las fichas fijas lo toman del secreto que indique `secretos.dueno2` (Lavanda: `OWNER_PHONE_2`).
-- Página de privacidad de Lavanda actualizada con las llamadas (no se graban; Twilio y ElevenLabs como proveedores). Revisar el texto
-  antes de reutilizarlo para otras lavanderías.
+- Página de privacidad de Lavanda actualizada con las llamadas (no se graban). Por decisión del dueño (11/11/2026) **no nombra a los
+  proveedores**, solo sus categorías (mensajería, telefonía, IA, alojamiento). Revisar el texto antes de reutilizarlo para otras lavanderías.
 
 ### Prueba con una segunda lavandería (06/11/2026)
 
