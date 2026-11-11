@@ -164,6 +164,14 @@ test("conexión de WhatsApp: el token se guarda cifrado y el panel nunca lo devu
   assert.equal((await panel("conexion", { id: "pepito", phoneId: "109999999999999", dueno: "677888998" })).estado, 200);
   assert.equal(REGISTRO.datos.get("ficha:pepito").conexion.tokenCifrado, guardada.conexion.tokenCifrado);
   await panel("conexion", { id: "pepito", phoneId: "109999999999999", dueno: "677888999" });
+  // segundo móvil (opcional): se guarda normalizado, no puede repetir el primero ni ser inválido
+  assert.equal((await panel("conexion", { id: "pepito", phoneId: "109999999999999", dueno: "677888999", dueno2: "677888999" })).estado, 422);
+  assert.equal((await panel("conexion", { id: "pepito", phoneId: "109999999999999", dueno: "677888999", dueno2: "12" })).estado, 422);
+  assert.equal((await panel("conexion", { id: "pepito", phoneId: "109999999999999", dueno: "677888999", dueno2: "611 222 333" })).estado, 200);
+  assert.equal(REGISTRO.datos.get("ficha:pepito").conexion.dueno2, "34611222333");
+  assert.equal((await panel("leer", { id: "pepito" })).ficha.conexion.dueno2, "34611222333");
+  await panel("conexion", { id: "pepito", phoneId: "109999999999999", dueno: "677888999" });
+  assert.equal(REGISTRO.datos.get("ficha:pepito").conexion.dueno2, "", "vacío = sin segundo móvil");
 });
 
 test("ACTIVAR: avisa de lo que afecta a Lavanda y, ya activa, se atiende con SU token", async () => {

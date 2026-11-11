@@ -111,7 +111,7 @@ Solo si hace falta: copiar `lavanda.js`, cambiar sus datos, añadirla a `FICHAS_
 poner sus secretos en Cloudflare con los nombres de `secretos`, `npm test` y desplegar.
 
 > ⚠️ **Al añadir la segunda lavandería, Lavanda deja de ser "la única".** A partir de ese momento hay que tener
-> en la ficha de Lavanda su número de Twilio en `numerosVoz` (si no, sus llamadas se rechazan) y el secreto
+> en la ficha de Lavanda su número de Twilio en `numerosVoz` (si no, sus llamadas se rechazan; **ya está puesto: +34877248094, 11/11/2026**) y el secreto
 > `WHATSAPP_PHONE_ID` bien puesto (si no, sus mensajes se ignoran). Compruébalo antes de desplegar.
 
 ## Las normas (`normas`): lo que cambia según cómo se cobra

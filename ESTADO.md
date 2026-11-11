@@ -15,7 +15,7 @@ Titular: Carmen María Mondéjar Castejón (autónoma). Socio: Juan José Bardou
 | Web | https://lavandavendrell.es (GitHub Pages, repo `bardoujuanjose/lavanda-web`) | Dominio en DonDominio. Enlaces a Facebook, Instagram y WhatsApp en el pie. |
 | Chat de la web | `chat.js` + servidor `/chat` | Solo informa; los problemas los manda a WhatsApp. |
 | Asistente de WhatsApp | Cloudflare Worker `lavanda-asistente`, ruta `/whatsapp` | Sustituye a Botpress (apagado). App de Meta "Lavanda Asistente" publicada. Claude Opus 5.5. |
-| Asistente de voz | Ruta `/voz` (Twilio ConversationRelay) | Claude Sonnet 5.5 sin razonamiento previo, voz ElevenLabs `2BJPFS2QZRUEpfkbclGy` a 0.9. Probado desde el navegador. |
+| Asistente de voz | Ruta `/voz` (Twilio ConversationRelay), número **+34 877 248 094** | Claude Sonnet 5.5 sin razonamiento previo, voz ElevenLabs `2BJPFS2QZRUEpfkbclGy` a 0.9, reconocimiento Deepgram Flux. Probado por teléfono real (11/11/2026). Aviso de pruebas en el saludo. Falta el desvío del 689 810 213. Pasa la llamada al móvil del dueño y, si no contesta, al de Carmen. |
 | Conversaciones de WhatsApp | https://lavanda-asistente.bardoujuanjose.workers.dev/admin/conversaciones | Solo lectura, contraseña `ADMIN_CLAVE`. Se guardan con fecha y hora desde que se publicó (las anteriores, solo los últimos 30 mensajes sin fecha, abriéndolas por teléfono). Máximo 400 mensajes y 1 año por cliente. Las llamadas aún no salen. |
 | Chat de pruebas | https://lavanda-asistente.bardoujuanjose.workers.dev/prueba | Con contraseña (`PRUEBA_CLAVE`). Botones Llamar, Twilio y WhatsApp. Arriba, la hora de la versión publicada. |
 | Normas de los asistentes | `asistente/src/negocio.js` (plantilla) | Basadas en las de Botpress. Casos A, B, C y D de dinero/cambio, y F (se equivocó de máquina al pagar), Bizum en 48 h previa verificación. Tono amable y profesional (09/11/2026). Los datos de Lavanda están en su ficha: `asistente/src/clientes/lavanda.js`. |
@@ -201,6 +201,15 @@ servidor) y crear la configuración de Embedded Signup; poner `META_APP_ID` y `M
 Pasos detallados en `asistente/src/clientes/README.md`.
 Pendiente: probar el alta con un número real, modelos de cobro reutilizables cuando haya 2-3 lavanderías reales,
 cobro de la suscripción.
+
+### Novedades de la voz que también valen para Limpoi (11/11/2026)
+
+- Plantilla común (`negocio.js`): la voz dice los importes con palabras, no razona en voz alta ni menciona herramientas, y el saludo no se
+  corta. Cada lavandería con voz necesita su número de Twilio en `numerosVoz` y **España activada** en Twilio → Voice → Geo permissions.
+- Panel `/admin` → Conexión: nuevo campo **Segundo móvil (opcional)**; si el primero no contesta la llamada pasada (15 s), suena ese.
+  Las fichas fijas lo toman del secreto que indique `secretos.dueno2` (Lavanda: `OWNER_PHONE_2`).
+- Página de privacidad de Lavanda actualizada con las llamadas (no se graban; Twilio y ElevenLabs como proveedores). Revisar el texto
+  antes de reutilizarlo para otras lavanderías.
 
 ### Prueba con una segunda lavandería (06/11/2026)
 

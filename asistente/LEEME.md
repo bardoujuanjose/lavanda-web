@@ -61,7 +61,8 @@ mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lav
 | `WHATSAPP_PHONE_ID` | Identificador del número de WhatsApp en Meta |
 | `WHATSAPP_APP_SECRET` | "App secret" de la app de Meta |
 | `WHATSAPP_VERIFY_TOKEN` | Palabra secreta inventada para conectar Meta |
-| `OWNER_PHONE` | Móvil personal del dueño (recibe los avisos) |
+| `OWNER_PHONE` | Móvil personal del dueño (recibe los avisos y la llamada pasada) |
+| `OWNER_PHONE_2` | (Opcional) Segundo móvil, p. ej. el de Carmen: si el primero no contesta la llamada pasada, suena este |
 | `ADMIN_CLAVE` | Contraseña del panel `/admin` |
 | `CLAVE_CIFRADO` | Clave para cifrar los tokens de WhatsApp de las demás lavanderías (mín. 16 caracteres; no cambiarla) |
 
@@ -79,9 +80,17 @@ mensajes libres: entonces el aviso se manda con la plantilla aprobada `aviso_lav
   `https://lavanda-asistente.bardoujuanjose.workers.dev/voz` (HTTP POST).
 - Las normas son las mismas que en WhatsApp (`PROCEDIMIENTOS` en la plantilla `negocio.js`) con adaptaciones para
   hablar (`INSTRUCCIONES_VOZ`).
-- En los casos en que WhatsApp diría "llama al 689 810 213", la llamada se pasa a `OWNER_PHONE`.
-  Si no contesta en 25 s, se le dice al cliente que escriba por WhatsApp y el dueño recibe un aviso
-  de llamada perdida.
+- Número de Twilio de Lavanda: +34 877 248 094 (en `numerosVoz` de su ficha). Los clientes llaman al 689 810 213, que se
+  desvía al asistente (`**21*+34877248094#`; se quita con `##21#`).
+- En los casos en que WhatsApp diría "llama al 689 810 213", la llamada se pasa a `OWNER_PHONE`. Suena `VOZ_SEGUNDOS_SONANDO`
+  segundos (15 por defecto); si no contesta y existe `OWNER_PHONE_2`, suena ese otros tantos. Si tampoco, se le dice al cliente
+  que escriba por WhatsApp y el dueño recibe un aviso de llamada perdida. Ojo: si el buzón de voz de un móvil "contesta" antes
+  que la persona, Twilio lo da por atendido.
+- Twilio necesita **España activada** en Voice → Settings → Geo permissions (si no, error 13227 al pasar la llamada).
 - Modelo de las llamadas: Claude Sonnet 5.5 con `thinking: between_tools` (sin razonamiento previo, más rápido). Se puede cambiar con la variable `VOZ_MODELO`.
 - Voz: `VOZ_TTS_PROVIDER` y `VOZ_VOZ` en `wrangler.toml`.
-- Secretos: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`.
+- Reconocimiento de lo que dice el cliente: `VOZ_STT_PROVIDER` ("Deepgram") y `VOZ_STT_MODELO` ("flux", detecta antes el
+  fin de la frase). Para volver al de antes, borrar las dos líneas.
+- Saludo: `VOZ_AVISO_PRUEBAS` añade un aviso mientras el asistente está en pruebas (borrar la línea para quitarlo). El saludo no
+  se puede interrumpir (`welcomeGreetingInterruptible="none"`; `VOZ_SALUDO_INTERRUMPIBLE` lo cambia).
+- Las llamadas no se graban ni se guardan; el asistente solo recuerda lo hablado mientras dura la llamada.- Secretos: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`.

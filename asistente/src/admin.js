@@ -161,7 +161,7 @@ function paraElPanel(guardada) {
   return {
     ...resto,
     conexion: conexion ? {
-      phoneId: conexion.phoneId || "", dueno: conexion.dueno || "", tieneToken: Boolean(conexion.tokenCifrado), wabaId: conexion.wabaId || "",
+      phoneId: conexion.phoneId || "", dueno: conexion.dueno || "", dueno2: conexion.dueno2 || "", tieneToken: Boolean(conexion.tokenCifrado), wabaId: conexion.wabaId || "",
       modo: conexion.modo || "manual", numero: conexion.numero || "", pendientes: conexion.pendientes || [], conectadaEn: conexion.conectadaEn || "",
     } : null,
   };
@@ -277,15 +277,18 @@ async function accion(datos, env, origen) {
       if (!g) return json({ error: "No existe esa lavandería (o es fija)." }, 404);
       const phoneId = String(datos.phoneId || "").trim();
       const dueno = normalizarTelefono(datos.dueno);
+      const dueno2 = normalizarTelefono(datos.dueno2);   // opcional: si el primero no contesta la llamada pasada
       const token = String(datos.token || "").trim();
       const errores = [];
       if (!/^\d{6,25}$/.test(phoneId)) errores.push("El identificador del número de WhatsApp va solo con cifras (lo da Meta).");
       if (!/^\d{11,15}$/.test(dueno)) errores.push("El móvil del dueño no es válido.");
+      if (dueno2 && !/^\d{11,15}$/.test(dueno2)) errores.push("El segundo móvil no es válido (déjalo vacío si no hay).");
+      if (dueno2 && dueno2 === dueno) errores.push("El segundo móvil tiene que ser distinto del primero.");
       if (!token && !g.conexion?.tokenCifrado) errores.push("Falta el token de WhatsApp.");
       if (token && !(env.CLAVE_CIFRADO && String(env.CLAVE_CIFRADO).length >= 16)) errores.push("Falta el secreto CLAVE_CIFRADO en Cloudflare: sin él no se pueden guardar tokens.");
       if (errores.length) return json({ errores }, 422);
       const conexion = {
-        phoneId, dueno,
+        phoneId, dueno, dueno2,
         wabaId: String(datos.wabaId || g.conexion?.wabaId || "").replace(/\D/g, ""),
         tokenCifrado: token ? await cifrar(token, env.CLAVE_CIFRADO) : g.conexion.tokenCifrado,
         actualizada: new Date().toISOString(),
@@ -517,6 +520,7 @@ const PAGINA = `<!doctype html>
       <div class="rejilla">
         <div><label>Identificador del número (Meta) <small>phone_number_id</small></label><input id="cPhone" inputmode="numeric"></div>
         <div><label>Móvil del dueño <small>recibe los avisos</small></label><input id="cDueno" inputmode="tel"></div>
+        <div><label>Segundo móvil <small>(opcional) si el primero no contesta la llamada pasada</small></label><input id="cDueno2" inputmode="tel"></div>
         <div><label>Token de WhatsApp <small id="cTokenInfo"></small></label><input id="cToken" type="password" autocomplete="off"></div>
       </div>
       <div class="fila" style="margin-top:10px"><button id="bConexion" type="button">Guardar conexión</button><span id="cEstado" class="chip"></span></div>
@@ -727,7 +731,7 @@ const PAGINA = `<!doctype html>
     $("bGuardar").hidden = esFija;
     $("tarjetaConexion").hidden = esFija || esNueva;
     var con = ficha.conexion || {};
-    $("cPhone").value = con.phoneId || ""; $("cDueno").value = con.dueno || ""; $("cToken").value = "";
+    $("cPhone").value = con.phoneId || ""; $("cDueno").value = con.dueno || ""; $("cDueno2").value = con.dueno2 || ""; $("cToken").value = "";
     $("cTokenInfo").textContent = con.tieneToken ? "(guardado; déjalo vacío para mantenerlo)" : "(todavía no hay)";
     $("cEstado").textContent = con.tieneToken && con.phoneId ? "Conectado" : "Sin conectar";
     $("cEstado").className = "chip " + (con.tieneToken && con.phoneId ? "ok" : "mal");
@@ -773,7 +777,7 @@ const PAGINA = `<!doctype html>
 
   $("bConexion").addEventListener("click", function () {
     var b = this; b.disabled = true;
-    api("conexion", { id: actual.id, phoneId: $("cPhone").value, dueno: $("cDueno").value, token: $("cToken").value }).then(function (j) {
+    api("conexion", { id: actual.id, phoneId: $("cPhone").value, dueno: $("cDueno").value, dueno2: $("cDueno2").value, token: $("cToken").value }).then(function (j) {
       b.disabled = false; $("msgEditor").textContent = "";
       if (j._estado !== 200) { mensajes($("msgEditor"), j.errores || [j.error], "error"); window.scrollTo(0, 0); return; }
       abrir(actual.id, ["Conexión guardada."]);
