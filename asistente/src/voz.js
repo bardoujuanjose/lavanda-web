@@ -154,6 +154,7 @@ export async function atenderVoz(request, env, ctx) {
       url: ws.toString(),
       language: env.VOZ_IDIOMA || "es-ES",
       welcomeGreeting: saludoConAviso(textos.SALUDO_VOZ, env.VOZ_AVISO_PRUEBAS),
+      welcomeGreetingInterruptible: env.VOZ_SALUDO_INTERRUMPIBLE || "none",   // el saludo no se corta por ruido ni por hablar encima
       ttsProvider: env.VOZ_TTS_PROVIDER || "Amazon",
       voice: env.VOZ_VOZ || "Lucia-Neural",
     };
