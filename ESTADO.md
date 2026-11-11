@@ -106,7 +106,15 @@ detergente + suavizante + desinfectante, y la tarjeta se recomienda cuando viene
    - Saludo de voz (11/11/2026): lleva un aviso de pruebas ("Estoy en pruebas, así que disculpa si algo no sale bien.") que se quita
      borrando `VOZ_AVISO_PRUEBAS` en `wrangler.toml`; y no se puede interrumpir (`welcomeGreetingInterruptible="none"`) porque se cortaba.
      Probado: se oye entero.
-   - **Siguiente paso:** decidir el desvío de Movistar (abajo) y avisar a Carmen/Juanjo cuando se active.
+   - Pasar la llamada (11/11/2026): suena el móvil del dueño (`OWNER_PHONE`) **15 s** (`VOZ_SEGUNDOS_SONANDO`) y, si no contesta, el de
+     Carmen (`OWNER_PHONE_2`, secreto ya creado en Cloudflare), otros 15 s; si tampoco, mensaje de "escríbenos por WhatsApp" + aviso
+     de llamada perdida. **Pendiente probarlo** (llamar desde un teléfono que no sea ninguno de los dos). Ojo con el buzón de voz de
+     los móviles: si "contesta" antes que la persona, Twilio lo da por atendido.
+   - Se dijo que las cifras del dinero se digan con palabras y que el asistente no razone en voz alta (frases de herramienta): probado, ya no salen.
+   - **Plan del desvío (por hacer):** el 689 810 213 desvía a mano todas las llamadas al asistente: `**21*+34877248094#` (se quita con
+     `##21#`); hoy ese número desvía al móvil del dueño, el desvío nuevo lo sustituye. Los clientes siempre llegan primero al asistente.
+     Sin verificar con Movistar.
+   - **Siguiente paso:** probar el segundo móvil y hacer el desvío; quitar el aviso de pruebas cuando se dé por terminado.
    - El trunk SIP `retell-limpoi` (creado para Retell) no se usa; dejarlo sin tocar. Puede ser de Limpoi.
    - **Desvío en Movistar, por decidir:** `**61*NUMERO**20#` (solo si no contestas en 20 s) o `**21*NUMERO#` (todas las llamadas al
      asistente; el dueño ya no recibe ninguna directamente). Se cancela con `##002#` / `##61#`. El 689 810 213 no se porta.
